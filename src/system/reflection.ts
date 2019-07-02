@@ -70,18 +70,15 @@ export function FromFiles(filter: string, configPath: string, resolve: boolean =
             const config = await DI.resolve<Configuration>(Configuration);
             const directories = config.get<string[]>(configPath);
 
-            if (!directories) {
-                throw new ArgumentException(`config path ${configPath} not exists`);
+            if (!directories || directories.length ) {
+                return;
             }
-
-            if (directories.length == 0) {
-                throw new ArgumentException(`Directories at config ${configPath} are not defined`);
-            }
+            
 
             return Promise.all(directories.map(d => path.normalize(d))
                 .filter(d => {
                     if (!fs.existsSync(d)) {
-                        throw new IOException(`directory ${d} not exists`);
+                       return false;
                     }
 
                     return true;
