@@ -388,8 +388,6 @@ export class FrameworkLogModule extends LogModule {
     @Autoinject
     public cfg: Configuration = null;
 
-
-
     /**
      * Initializes bunyan logger & hooks for process:uncaughtException to log fatal application events
      */

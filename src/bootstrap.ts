@@ -1,18 +1,22 @@
-import { HttpServer } from './system/http';
-import { Autoinject, Controllers } from "./system";
+import { HttpServer, Autoinject, Controllers, DI, FrameworkLogModule, LogModule, FrameworkConfiguration, Configuration } from "./system";
 
 /**
  * Starting point for all applications. To create new app just subclass this.
  */
 export abstract class Application {
-    
-    @Autoinject
+
     protected Controllers: Controllers;
 
-    @Autoinject
-    protected HttpServer : HttpServer;
+    protected HttpServer: HttpServer;
 
     public async run(): Promise<void> {
+
+        // register framework default modules, 
+        DI.register(FrameworkConfiguration).as(Configuration);
+        DI.register(FrameworkLogModule).as(LogModule);
+
+        this.Controllers = await DI.resolve<Controllers>(Controllers);
+        this.HttpServer = await DI.resolve<HttpServer>(HttpServer);
 
         // give chance to do something for others
         await this.bootstrap();
@@ -22,5 +26,8 @@ export abstract class Application {
     }
 
 
+    /**
+     * Configure your app here. Register own classes in DI container etc.
+     */
     protected async abstract bootstrap(): Promise<void>;
 }
