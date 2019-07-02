@@ -15,11 +15,16 @@ export abstract class Application {
         DI.register(FrameworkConfiguration).as(Configuration);
         DI.register(FrameworkLogModule).as(LogModule);
 
-        this.Controllers = await DI.resolve<Controllers>(Controllers);
-        this.HttpServer = await DI.resolve<HttpServer>(HttpServer);
-
+     
         // give chance to do something for others
         await this.bootstrap();
+
+        // give chance for loading loggin submodule,
+        // other modules expecs log to exists already
+        await DI.resolve<LogModule>(LogModule);
+
+        this.Controllers = await DI.resolve<Controllers>(Controllers);
+        this.HttpServer = await DI.resolve<HttpServer>(HttpServer);
 
         // start server
         await this.HttpServer.start();

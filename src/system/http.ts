@@ -198,7 +198,7 @@ export function jsonResponse(model: any, status?: HTTP_STATUS_CODE) {
 export function pugResponse(file: string, model: any, status?: HTTP_STATUS_CODE) {
 
 
-    const Log: Log = DI.get<LogModule>("Log").getLogger();
+    const Log: Log = DI.get<LogModule>("LogModule").getLogger();
     const Cfg: Configuration = DI.get("Configuration");
 
 
