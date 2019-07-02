@@ -1,15 +1,19 @@
 {
-    "name": "spine",
-    "version": "1.1.2",
-    "description": "Spine framework",
-    "private": true,
+    "name": "spinajs",
+    "version": "1.0.0",
+    "description": "SpinaJS framework",
+    "private": false,
     "main": "index.js",
     "repository": {
         "type": "git",
-        "url": "git@gitlab.coderush.pl:coderush/spine.git"
+        "url": "git@github.com:spinajs/core.git"
     },
-    "author": "",
-    "license": "ISC",
+    "author": "spinajs <spinajs@coderush.pl>",
+    "bugs": {
+        "url": "https://github.com/spinajs/core/issues"
+    },
+    "homepage": "https://github.com/spinajs/core",
+    "license": "MIT",
     "dependencies": {
         "@types/events": "^3.0.0",
         "ajv": "^6.10.0",
