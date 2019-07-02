@@ -1,0 +1,29 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "noImplicitAny": true,
+        "removeComments": true,
+        "preserveConstEnums": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "outDir": "lib/",
+        "sourceMap": true,
+        "target": "es2017",
+        "lib": [
+            "esnext"
+        ],
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true
+        
+    },
+    "include": [
+        "src/**/*",
+        "test/**/*", "../spine-orm/src/index.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "**/*.spec.ts",
+        "**/*.test.ts"
+        
+    ]
+}  
