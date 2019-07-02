@@ -1,6 +1,6 @@
 {
     "name": "@spinajs/core",
-    "version": "1.0.4",
+    "version": "1.0.8",
     "description": "SpinaJS framework",
     "private": false,
     "main": "lib/index.js",
@@ -83,10 +83,7 @@
         "test": "nyc mocha",
         "build-docs": "rimraf docs && typedoc --options typedoc.json src/",
         "build": "tsc",
-        "postinstall": "tsc"
-    },
-    "bin": {
-        "spine": "./core/lib/bin/spina"
+        "prepare": "npm run build"
     },
     "nyc": {
         "extension": [
