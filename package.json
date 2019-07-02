@@ -1,6 +1,6 @@
 {
     "name": "@spinajs/core",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "SpinaJS framework",
     "private": false,
     "main": "lib/index.js",
@@ -85,7 +85,7 @@
         "build": "tsc"
     },
     "bin": {
-        "spine": "./lib/bin/spine"
+        "spine": "./core/lib/bin/spina"
     },
     "nyc": {
         "extension": [
