@@ -1,9 +1,10 @@
 {
-    "name": "spinajs",
+    "name": "@spinajs/core",
     "version": "1.0.0",
     "description": "SpinaJS framework",
     "private": false,
-    "main": "index.js",
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
     "repository": {
         "type": "git",
         "url": "git@github.com:spinajs/core.git"
@@ -80,7 +81,8 @@
     },
     "scripts": {
         "test": "nyc mocha",
-        "build-docs": "rimraf docs && typedoc --options typedoc.json src/"
+        "build-docs": "rimraf docs && typedoc --options typedoc.json src/",
+        "build": "tsc"
     },
     "bin": {
         "spine": "./lib/bin/spine"
