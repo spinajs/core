@@ -60,10 +60,11 @@ export class FrameworkConfiguration  extends Configuration {
      * Default dirs to check for  configuration files
      */
     protected CONFIG_DIRS: string[] = [
-        // project path
+        // framework path
         normalize(join(resolve(__dirname), "/../config")),
 
-        // lib path
+        // project paths
+        normalize(join(resolve(__dirname).split(sep + "node_modules")[0], "/dist/config")),
         normalize(join(resolve(__dirname).split(sep + "node_modules")[0], "/build/config")),
         normalize(join(resolve(__dirname).split(sep + "node_modules")[0], "/config"))
     ];
