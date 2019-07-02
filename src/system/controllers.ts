@@ -5,6 +5,8 @@ import _ from "./lodash";
 import { RequestHandler } from "express-serve-static-core";
 import { Schema } from "./schema";
 
+export type ResponseFunction = (req : express.Request, res: express.Response ) => void;
+
 export const CONTROLLER_DESCRIPTOR_SYMBOL = Symbol.for("CONTROLLER_DESCRIPTOR_SYMBOL");
 
 export enum RouteParameterType {

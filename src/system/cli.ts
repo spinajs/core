@@ -204,7 +204,7 @@ export class FrameworkCliModule extends ModuleBase implements CliModule {
     @Autoinject
     private Cfg: Configuration;
 
-    /**
+    /**task
      * process arguments list
      */
     private Args: string[];

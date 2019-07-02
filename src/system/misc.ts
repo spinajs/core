@@ -1,5 +1,3 @@
-import * as _ from "lodash";
- 
 /**
  * Apply reusable components to target class - mixins
  * 

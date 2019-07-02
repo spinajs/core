@@ -1,4 +1,3 @@
-import { DI } from './../system/index';
-import { CliModule } from './../system/commands';
-
-DI.resolve(CliModule);
+import { DI, FrameworkCliModule } from './../system/index';
+ 
+DI.resolve(FrameworkCliModule);

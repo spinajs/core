@@ -1,5 +1,3 @@
-import * as _ from 'lodash';
-
 import { FrameworkEventEmitter } from './events';
 import { InvalidOperationException, NotImplementedException } from './exceptions';
 import { FrameworkModule } from './interfaces';

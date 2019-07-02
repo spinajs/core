@@ -121,7 +121,7 @@ interface Injectable {
  * 
  * ```
  */
-export function Inject(...args: ServiceIdentifier[] | AbstractServiceIdentifier[]) {
+export function Inject(...args: (ServiceIdentifier | AbstractServiceIdentifier) []) {
     return (target: any) => {
 
         _initializeDi(target);
@@ -562,7 +562,7 @@ export namespace DI {
      * @throws { ArgumentException } if type is null or undefined
      */
     export async function resolve<T>(type: ServiceIdentifier | AbstractServiceIdentifier, options?: any[]): Promise<T> {
-        return RootContainer.resolve(type, options);
+        return RootContainer.resolve<T>(type, options);
     }
 
     /**

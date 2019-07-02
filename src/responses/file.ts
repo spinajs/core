@@ -1,8 +1,10 @@
-import { IOException } from "./../system/index";
+import * as express from 'express';
 import * as fs from 'fs';
-import * as express from "express";
-import * as mime from 'mime';
 import * as _ from 'lodash';
+import * as mime from 'mime';
+
+import { ResponseFunction } from '../system/controllers';
+import { IOException } from '../system/index';
 
 /**
 * Sends file to client at given path & filename. If file exists 
@@ -12,7 +14,7 @@ import * as _ from 'lodash';
  * @param filename - real filename send to client
  * @param mimeType - optional mimetype. If not set, server will try to guess.
  */
-export function file(path: string, filename: string, mimeType?: string) {
+export function file(path: string, filename: string, mimeType?: string) : ResponseFunction {
 
     let mType = (mimeType) ? mimeType : mime.getType(filename);
 

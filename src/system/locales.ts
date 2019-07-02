@@ -1,10 +1,11 @@
-import { Configuration, Autoinject, ModuleBase, Logger, Log, File, DI  } from "./index";
-import * as glob from "glob";
-import * as path from 'path';
 import * as fs from 'fs';
-import * as _ from "lodash";
+import * as glob from 'glob';
+import * as _ from 'lodash';
+import * as path from 'path';
 import * as util from 'util';
 
+import { File } from './filesystem';
+import { Autoinject, Configuration, DI, Log, Logger, ModuleBase } from './index';
 
 const MakePlural = require("make-plural");
 const intervalParse = require("math-interval-parser");
@@ -149,7 +150,7 @@ export class Locales extends ModuleBase {
     public __l(text: string) {
         const result: string[] = [];
 
-        for (let [locale, translations] of this.Locales) {
+        for (let [, translations] of this.Locales) {
             result.push(<string>_.property(text)(translations));
         }
 
