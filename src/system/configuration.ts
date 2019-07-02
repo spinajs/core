@@ -1,9 +1,10 @@
-import * as _ from "lodash";
-import * as fs from "fs";
-import * as glob from "glob";
-import { ModuleBase } from "./module";
-import { join, resolve, normalize, sep } from "path";
+import * as commander from 'commander';
+import * as fs from 'fs';
+import * as glob from 'glob';
+import * as _ from 'lodash';
+import { join, normalize, resolve, sep } from 'path';
 
+import { ModuleBase } from './module';
 
 /**
  * Hack to inform ts that jasmine var is declared to skip syntax error
@@ -90,8 +91,14 @@ export class FrameworkConfiguration  extends Configuration {
     constructor(app?: string, appBaseDir?: string) {
         super();
 
-        this._runApp = app;
-        this._baseDir = (appBaseDir) ? appBaseDir : join(__dirname, "../apps/");
+        if(!app){
+            commander.option("-a, --app <appname>", "Application name to run");
+            commander.option("-p, --apppath <apppath>", "Custom app path");
+            commander.parse(process.argv);
+        }
+
+        this._runApp = app || commander.app;
+        this._baseDir = (appBaseDir) ? appBaseDir : join(__dirname, "../apps/") || commander.apppath;
     }
 
     protected dir(toJoin: string) {
