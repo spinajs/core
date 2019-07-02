@@ -1,4 +1,4 @@
-import { HttpServer, Autoinject, Controllers, DI, FrameworkLogModule, LogModule, FrameworkConfiguration, Configuration } from "./system";
+import { HttpServer, Controllers, DI, FrameworkLogModule, LogModule, FrameworkConfiguration, Configuration } from "./system";
 
 /**
  * Starting point for all applications. To create new app just subclass this.
