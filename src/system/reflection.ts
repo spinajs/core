@@ -70,7 +70,7 @@ export function FromFiles(filter: string, configPath: string, resolve: boolean =
             const config = await DI.resolve<Configuration>(Configuration);
             const directories = config.get<string[]>(configPath);
 
-            if (!directories || directories.length ) {
+            if (!directories || directories.length === 0 ) {
                 return;
             }
             
