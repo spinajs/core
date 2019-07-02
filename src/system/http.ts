@@ -228,7 +228,7 @@ export function pugResponse(file: string, model: any, status?: HTTP_STATUS_CODE)
             Log.warn(`Cannot render pug file error: ${err.message}, ticket: ${ticketNo}`, err);
 
             res.status(HTTP_STATUS_CODE.INTERNAL_ERROR);
-            res.send(Cfg.get<string>('http.fatal_template').replace("{ticket}", ticketNo));
+            res.send(Cfg.get<string>('http.FatalTemplate').replace("{ticket}", ticketNo));
         }
 
         function _render(f: string, m: any, c: HTTP_STATUS_CODE) {
