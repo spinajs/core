@@ -243,7 +243,7 @@ export class FrameworkCliModule extends ModuleBase implements CliModule {
             _c.action((...args) => {
 
                 this.Commands.then(cmds => {
-                    const cmd = _.find(cmds, (c => c.Name === process.argv[2]));
+                    const cmd = _.find(cmds, (c => c.Instance.Name === process.argv[2]));
 
                     if (!cmd) {
                         throw new ArgumentException(`command ${process.argv[2]} not found`);

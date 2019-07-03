@@ -1,6 +1,6 @@
 {
     "name": "@spinajs/core",
-    "version": "1.0.17",
+    "version": "1.0.18",
     "description": "SpinaJS framework",
     "private": false,
     "main": "lib/index.js",
