@@ -99,7 +99,7 @@ export class FrameworkConfiguration  extends Configuration {
         }
 
         this._runApp = app || commander.app;
-        this._baseDir = (commander.apppath) ? commander.apppath : (appBaseDir) ? appBaseDir : join(__dirname, "../apps/") || ;
+        this._baseDir = (commander.apppath) ? commander.apppath : (appBaseDir) ? appBaseDir : join(__dirname, "../apps/");
     }
 
     protected dir(toJoin: string) {
