@@ -7,7 +7,7 @@ async function bootstrap() {
 
     await DI.resolve(Configuration);
     await DI.resolve(LogModule);
-    await DI.resolve(FrameworkCliModule);
+    await DI.resolve(FrameworkCliModule, [process.argv]);
 }
 
 bootstrap().then(() => { });

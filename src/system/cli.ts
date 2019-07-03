@@ -254,11 +254,6 @@ export class FrameworkCliModule extends ModuleBase implements CliModule {
             });
         }
 
-
-
-        // pass default parameter avaible in all commands
-        commander.option("-a, --app [value]", "Application to run")
-
         if (this.Args == null || this.Args.length < 3) {
             commander.help();
             return;
