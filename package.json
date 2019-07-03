@@ -83,7 +83,8 @@
         "test": "nyc mocha",
         "build-docs": "rimraf docs && typedoc --options typedoc.json src/",
         "build": "tsc",
-        "prepare": "npm run build"
+        "prepare": "npm run build",
+        "postinstall": "npm run build"
     },
     "nyc": {
         "extension": [
