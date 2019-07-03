@@ -13,3 +13,4 @@ export * from './events';
 export * from './interfaces';
 export * from './locales';
 export * from './controllers';
+export * from './queues';
