@@ -8,5 +8,5 @@ import { ResponseFunction } from '../system/controllers';
  */
 
 export function badRequest(err?: any): ResponseFunction {
-    return httpResponse(err, HTTP_STATUS_CODE.BAD_REQUEST, "responses/badRequest");
+  return httpResponse(err, HTTP_STATUS_CODE.BAD_REQUEST, 'responses/badRequest');
 }

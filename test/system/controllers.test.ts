@@ -89,6 +89,4 @@ describe("Controllers test", () => {
     it("Pass parameters to action", async () => {
 
     })
-
-
 });

@@ -7,5 +7,5 @@ import { ResponseFunction } from '../system/controllers';
  * @param data - error to send
  */
 export function created(data?: any): ResponseFunction {
-    return httpResponse(data, HTTP_STATUS_CODE.CREATED, "responses/created")
+  return httpResponse(data, HTTP_STATUS_CODE.CREATED, 'responses/created');
 }

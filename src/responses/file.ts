@@ -14,28 +14,31 @@ import { IOException } from '../system/index';
  * @param filename - real filename send to client
  * @param mimeType - optional mimetype. If not set, server will try to guess.
  */
-export function file(path: string, filename: string, mimeType?: string) : ResponseFunction {
+export function file(path: string, filename: string, mimeType?: string): ResponseFunction {
+  let mType = mimeType ? mimeType : mime.getType(filename);
 
-    let mType = (mimeType) ? mimeType : mime.getType(filename);
+  if (!fs.existsSync(path)) {
+    throw new IOException(`File ${path} not exists`);
+  }
 
-    if (!fs.existsSync(path)) {
-        throw new IOException(`File ${path} not exists`);
-    }
-
-    return async function (_req: express.Request, res: express.Response) {
-        return new Promise((resolve, reject) => {
-            res.sendFile(path, {
-                headers: {
-                    'Content-Disposition': `attachment; filename="${filename}"`,
-                    'Content-Type': mType
-                }
-            }, (err: Error) => {
-                if (!_.isNil(err)) {
-                    reject(err);
-                } else {
-                    resolve();
-                }
-            });
-        })
-    }
+  return async function(_req: express.Request, res: express.Response) {
+    return new Promise((resolve, reject) => {
+      res.sendFile(
+        path,
+        {
+          headers: {
+            'Content-Disposition': `attachment; filename="${filename}"`,
+            'Content-Type': mType,
+          },
+        },
+        (err: Error) => {
+          if (!_.isNil(err)) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        },
+      );
+    });
+  };
 }

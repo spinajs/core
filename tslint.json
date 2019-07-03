@@ -1,5 +1,5 @@
 {
   "extends": [
-    "tslint-circular-dependencies"
+    "tslint-circular-dependencies","tslint:recommended", "tslint-config-prettier"
   ]
 }

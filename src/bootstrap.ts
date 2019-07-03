@@ -1,38 +1,42 @@
-import { HttpServer, Controllers, DI, FrameworkLogModule, LogModule, FrameworkConfiguration, Configuration } from "./system";
+import {
+  HttpServer,
+  Controllers,
+  DI,
+  FrameworkLogModule,
+  LogModule,
+  FrameworkConfiguration,
+  Configuration,
+} from './system';
 
 /**
  * Starting point for all applications. To create new app just subclass this.
  */
 export abstract class Application {
+  protected Controllers: Controllers;
 
-    protected Controllers: Controllers;
+  protected HttpServer: HttpServer;
 
-    protected HttpServer: HttpServer;
+  public async run(): Promise<void> {
+    // register framework default modules,
+    DI.register(FrameworkConfiguration).as(Configuration);
+    DI.register(FrameworkLogModule).as(LogModule);
 
-    public async run(): Promise<void> {
+    // give chance to do something for others
+    await this.bootstrap();
 
-        // register framework default modules, 
-        DI.register(FrameworkConfiguration).as(Configuration);
-        DI.register(FrameworkLogModule).as(LogModule);
+    // give chance for loading loggin submodule,
+    // other modules expecs log to exists already
+    await DI.resolve<LogModule>(LogModule);
 
-     
-        // give chance to do something for others
-        await this.bootstrap();
+    this.Controllers = await DI.resolve<Controllers>(Controllers);
+    this.HttpServer = await DI.resolve<HttpServer>(HttpServer);
 
-        // give chance for loading loggin submodule,
-        // other modules expecs log to exists already
-        await DI.resolve<LogModule>(LogModule);
+    // start server
+    await this.HttpServer.start();
+  }
 
-        this.Controllers = await DI.resolve<Controllers>(Controllers);
-        this.HttpServer = await DI.resolve<HttpServer>(HttpServer);
-
-        // start server
-        await this.HttpServer.start();
-    }
-
-
-    /**
-     * Configure your app here. Register own classes in DI container etc.
-     */
-    protected async abstract bootstrap(): Promise<void>;
+  /**
+   * Configure your app here. Register own classes in DI container etc.
+   */
+  protected abstract async bootstrap(): Promise<void>;
 }

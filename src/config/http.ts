@@ -14,7 +14,7 @@ function dir(path: string) {
  */
 module.exports.http = {
   /**
-   * port of http server to listen. 
+   * port of http server to listen.
    */
   Port: 1337,
 
@@ -24,13 +24,13 @@ module.exports.http = {
   Middlewares: [
     helmet(),
     express.json({
-      limit: "5mb"
+      limit: '5mb',
     }),
     express.urlencoded({
       extended: true,
     }),
     cookieParser(),
-    compression()
+    compression(),
   ],
 
   /**
@@ -41,13 +41,13 @@ module.exports.http = {
       /**
        * virtual prefix in url eg. http://localhost:3000/static/images/kitten.jpg
        */
-      Route: "/static",
+      Route: '/static',
 
       /**
        * full path to folder with static content
        */
-      Path: dir("/../../data/public")
-    }
+      Path: dir('/../../data/public'),
+    },
   ],
 
   /**
@@ -72,5 +72,5 @@ module.exports.http = {
       </div>
       <h3> Ticker no. {ticket}</h3>
     </body>
-  </html>`
-}
+  </html>`,
+};

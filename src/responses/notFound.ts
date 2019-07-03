@@ -6,5 +6,5 @@ import { ResponseFunction } from '../system/controllers';
  * @param err - error to send
  */
 export function notFound(err?: any): ResponseFunction {
-   return httpResponse(err, HTTP_STATUS_CODE.NOT_FOUND, "responses/notFound")
+  return httpResponse(err, HTTP_STATUS_CODE.NOT_FOUND, 'responses/notFound');
 }

@@ -6,6 +6,6 @@ import { ResponseFunction } from '../system/controllers';
  * Returns HTTP 200 OK response with json content
  * @param data - data to send
  */
-export function ok(data?: any) : ResponseFunction {
-    return httpResponse(data, HTTP_STATUS_CODE.OK, "responses/ok")
+export function ok(data?: any): ResponseFunction {
+  return httpResponse(data, HTTP_STATUS_CODE.OK, 'responses/ok');
 }
