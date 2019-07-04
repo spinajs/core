@@ -1,39 +1,47 @@
 import 'mocha';
+
 import * as chai from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
-import { Singleton, NewInstance, PerChildInstance, Autoinject, DI, Inject, Container } from './../../src/system/di';
-import { ArgumentException } from './../../src/system/exceptions';
+
+import { Autoinject, Container, DI, Inject, NewInstance, PerChildInstance, Singleton } from './../../src/system/di';
+
 import { ModuleBase } from '../../src/system/module';
+import { ArgumentException } from './../../src/system/exceptions';
 
 const expect = chai.expect;
 chai.use(chaiAsPromised);
 
 @Singleton()
-//@ts-ignore
+// @ts-ignore
 class Foo {
-    public static _counter = 0;
+    public static Counter : number;
+
+	public static __initialize_static_members() {
+		Foo.Counter=0;
+    }
+    
     constructor() {
-        Foo._counter++;
+        Foo.Counter++;
     }
 }
 
 @NewInstance()
-//@ts-ignore
+// @ts-ignore
 class BarFar {
-    public static _counter = 0;
-    public _instanceCounter = 0;
+    public static Counter : number;
+    public InstanceCounter = 0;
     constructor() {
-        BarFar._counter++;
-        this._instanceCounter++;
+        BarFar.Counter++;
+        this.InstanceCounter++;
     }
 }
 
 @PerChildInstance()
-//@ts-ignore
+// @ts-ignore
 class Far {
-    public static _counter = 0;
+    public static Counter : number;
     constructor() {
-        Far._counter++;
+        Far.Counter++;
     }
 }
 
@@ -42,10 +50,11 @@ class Zar {
 }
 
 @Singleton()
-//@ts-ignore
+// @ts-ignore
 class TestModule extends ModuleBase {
 
-    async initialize() {
+    public async initialize() {
+        return true;
     }
 }
 
@@ -57,7 +66,7 @@ class AutoinjectBar
 class AutoinjectClass {
 
     @Autoinject
-    //@ts-ignore
+    // @ts-ignore
     public Test: AutoinjectBar = null;
 }
 
@@ -87,7 +96,7 @@ describe("Dependency injection", () => {
         const single = await DI.resolve<Foo>(Foo);
         const single2 = await DI.resolve<Foo>(Foo);
 
-        expect(Foo._counter).to.eq(1);
+        expect(Foo.Counter).to.eq(1);
         expect(single === single2).to.equal(true);
 
         // child
@@ -96,7 +105,7 @@ describe("Dependency injection", () => {
             const single3 = await child.resolve<Foo>(Foo);
             const single4 = await child.resolve<Foo>(Foo);
 
-            expect(Foo._counter).to.eq(1);
+            expect(Foo.Counter).to.eq(1);
             expect((single === single2 && single === single3 && single === single4)).to.equal(true);
         }
     })
@@ -105,9 +114,9 @@ describe("Dependency injection", () => {
         const single = await DI.resolve<BarFar>(BarFar);
         const single2 = await DI.resolve<BarFar>(BarFar);
 
-        expect(BarFar._counter).to.eq(2);
-        expect(single._instanceCounter).to.eq(1);
-        expect(single2._instanceCounter).to.eq(1);
+        expect(BarFar.Counter).to.eq(2);
+        expect(single.InstanceCounter).to.eq(1);
+        expect(single2.InstanceCounter).to.eq(1);
         expect(single === single2).to.equal(false);
 
         {
@@ -115,9 +124,9 @@ describe("Dependency injection", () => {
             const single3 = await child.resolve<BarFar>(BarFar);
             const single4 = await child.resolve<BarFar>(BarFar);
 
-            expect(BarFar._counter).to.eq(4);
-            expect(single3._instanceCounter).to.eq(1);
-            expect(single4._instanceCounter).to.eq(1);
+            expect(BarFar.Counter).to.eq(4);
+            expect(single3.InstanceCounter).to.eq(1);
+            expect(single4.InstanceCounter).to.eq(1);
             expect(single3 === single4).to.equal(false);
             expect(single3 === single).to.equal(false);
         }
@@ -129,7 +138,7 @@ describe("Dependency injection", () => {
         const single = await DI.resolve<Far>(Far);
         const single2 = await DI.resolve<Far>(Far);
 
-        expect(Far._counter).to.eq(1);
+        expect(Far.Counter).to.eq(1);
         expect(single === single2).to.equal(true);
 
         // child
@@ -138,7 +147,7 @@ describe("Dependency injection", () => {
             const single3 = await child.resolve<Far>(Far);
             const single4 = await child.resolve<Far>(Far);
 
-            expect(Far._counter).to.eq(2);
+            expect(Far.Counter).to.eq(2);
             expect(single3 === single4).to.equal(true);
             expect(single3 === single).to.equal(false);
         }
@@ -165,12 +174,12 @@ describe("Dependency injection", () => {
 
     it("Register type as singleton", async () => {
         class RegisterBase {
-            static _count = 0;
+            public static Count : number;
         }
         class RegisterImpl implements RegisterBase {
-            static _count = 0;
+            public static Count : number;
             constructor() {
-                RegisterImpl._count++;
+                RegisterImpl.Count++;
             }
         }
 
@@ -182,7 +191,7 @@ describe("Dependency injection", () => {
         expect(instance).to.be.not.null;
         expect(instance2).to.be.not.null;
 
-        expect(RegisterImpl._count).to.eq(1);
+        expect(RegisterImpl.Count).to.eq(1);
 
         expect(instance.constructor.name).to.equal(RegisterImpl.name);
     })
@@ -249,24 +258,24 @@ describe("Dependency injection", () => {
         class Bar { }
 
         @Inject(Bar)
-        //@ts-ignore
+        // @ts-ignore
         class Test {
-            _a: string;
-            _b: number;
-            _bar: Bar;
+            public A: string;
+            public B: number;
+            public Bar: Bar;
 
             constructor(bar: Bar, a: string, b: number) {
-                this._a = a;
-                this._b = b;
-                this._bar = bar;
+                this.A = a;
+                this.B = b;
+                this.Bar = bar;
             }
         }
 
         const instance = await DI.resolve<Test>(Test, ["a", 1]);
-        expect(instance._a).to.eq("a");
-        expect(instance._b).to.eq(1);
-        expect(instance._bar).to.be.not.null;
-        expect(instance._bar.constructor.name).to.be.eq("Bar");
+        expect(instance.A).to.eq("a");
+        expect(instance.B).to.eq(1);
+        expect(instance.Bar).to.be.not.null;
+        expect(instance.Bar.constructor.name).to.be.eq("Bar");
     });
 
     it("Should construct child container", () => {
@@ -274,3 +283,4 @@ describe("Dependency injection", () => {
         expect(child).to.be.not.null;
     });
 });
+
