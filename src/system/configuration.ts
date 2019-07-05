@@ -20,7 +20,9 @@ interface IFrameworkVersion {
 }
 
 function log(message: string) {
-  typeof jasmine === 'undefined' ? console.log('[ CONFIGURATION ] ' + message) : null;
+  if (typeof jasmine === 'undefined') {
+    console.log('[ CONFIGURATION ] ' + message)
+  }
 }
 
 function merge(to: any, from: any): void {
@@ -49,7 +51,7 @@ export abstract class Configuration extends ModuleBase {
    *
    * @param path - path to property eg. ["system","dirs"] or "system" or "system.dirs"
    */
-  public abstract get<T>(_path: string[] | string, _defaultValue?: T): T;
+  public abstract get<T>(path: string[] | string, defaultValue?: T): T;
 }
 
 export class FrameworkConfiguration extends Configuration {

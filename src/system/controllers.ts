@@ -1,22 +1,12 @@
+import * as express from 'express';
+import { RequestHandler } from 'express-serve-static-core';
+
 import { ValidationException } from './exceptions';
 import {
-  ModuleEvents,
-  ClassInfo,
-  FromFiles,
-  Autoinject,
-  Log,
-  ModuleBase,
-  Configuration,
-  DI,
-  Logger,
-  HttpServer,
-  ForbiddenException,
-  Exception,
-  ServerErrorException,
+    Autoinject, ClassInfo, Configuration, DI, Exception, ForbiddenException, FromFiles, HttpServer,
+    Log, Logger, ModuleBase, ModuleEvents, ServerErrorException
 } from './index';
-import * as express from 'express';
 import _ from './lodash';
-import { RequestHandler } from 'express-serve-static-core';
 import { Schema } from './schema';
 
 export type ResponseFunction = (req: express.Request, res: express.Response) => void;
@@ -83,7 +73,7 @@ function createParameterDescription(key: string, schema: any, routeType: RoutePa
 
   const param: any = {
     ParameterName: key,
-    RouteType: RouteParameterType.FromBody,
+    RouteType: routeType,
     Schema: schema,
   };
 
@@ -129,7 +119,8 @@ export abstract class PolicyBase implements IMiddleware {
     }
   }
 
-  public async onAfterAction(_req: express.Request) { }
+// tslint:disable-next-line: no-empty
+  public async onAfterAction() { }
 
   /**
    * Should check permission / access to route.

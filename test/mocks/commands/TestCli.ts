@@ -1,4 +1,4 @@
-import { CliCommandBase, Cli, ICliOption } from './../../../src/system/cli';
+import { CliCommandBase, Cli, CliOption } from './../../../src/system/cli';
 import { Autoinject} from "./../../../src/system/di";
 import { Configuration } from "./../../../src/system/configuration";
 
