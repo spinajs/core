@@ -3,7 +3,7 @@ import 'mocha';
 import * as chai from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
 
-import { Autoinject, Container, DI, Inject, NewInstance, PerChildInstance, Singleton } from './../../src/system/di';
+import { Autoinject, Container, DI, Inject, NewInstance, PerChildInstance, Singleton , LazyInject} from './../../src/system/di';
 
 import { ModuleBase } from '../../src/system/module';
 import { ArgumentException } from './../../src/system/exceptions';
@@ -15,20 +15,26 @@ chai.use(chaiAsPromised);
 // @ts-ignore
 class Foo {
     public static Counter : number;
-
-	public static __initialize_static_members() {
-		Foo.Counter=0;
-    }
     
+    public static initialize(){
+        Foo.Counter = 0;
+    }
+
     constructor() {
         Foo.Counter++;
     }
 }
 
+Foo.initialize();
+
 @NewInstance()
 // @ts-ignore
 class BarFar {
     public static Counter : number;
+    public static initialize(){
+        BarFar.Counter = 0;
+    }
+
     public InstanceCounter = 0;
     constructor() {
         BarFar.Counter++;
@@ -36,14 +42,22 @@ class BarFar {
     }
 }
 
+BarFar.initialize();
+
 @PerChildInstance()
 // @ts-ignore
 class Far {
     public static Counter : number;
+    public static initialize(){
+        Far.Counter = 0;
+    }
+
     constructor() {
         Far.Counter++;
     }
 }
+Far.initialize();
+
 
 class Zar {
 
@@ -70,6 +84,23 @@ class AutoinjectClass {
     public Test: AutoinjectBar = null;
 }
 
+class LazyInjectDep
+{
+    public static Counter  : number;
+
+    constructor(){
+        LazyInjectDep.Counter ++;
+    }
+}
+
+LazyInjectDep.Counter = 0;
+
+
+class LazyInjectResolve
+{
+    @LazyInject(LazyInjectDep)
+    public Instance : LazyInjectDep;
+}
 
 
 describe("Dependency injection", () => {
@@ -88,6 +119,21 @@ describe("Dependency injection", () => {
         expect(autoinjected).to.be.not.null;
         expect(autoinjected.Test).to.be.not.null;
         expect(autoinjected.Test instanceof AutoinjectBar).to.be.true;
+    })
+
+    it("Lazy inject check", async () =>{
+
+        const lazyinject = await DI.resolve<LazyInjectResolve>(LazyInjectResolve);
+
+        expect(LazyInjectDep.Counter).to.eq(0);
+
+        const dep = lazyinject.Instance;
+        expect(dep).to.be.a("promise");
+
+
+        const resolvedDep = await dep;
+        expect(resolvedDep).to.be.instanceof(LazyInjectDep);
+
     })
 
     it("Singleton creation", async () => {
@@ -176,12 +222,15 @@ describe("Dependency injection", () => {
         class RegisterBase {
             public static Count : number;
         }
+        RegisterBase.Count = 0;
         class RegisterImpl implements RegisterBase {
             public static Count : number;
             constructor() {
                 RegisterImpl.Count++;
             }
         }
+        RegisterImpl.Count = 0;
+        
 
         DI.register(RegisterImpl).as(RegisterBase);
 
