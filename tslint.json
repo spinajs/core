@@ -11,6 +11,9 @@
     },
     "imports-after-export": {
       "severity": "off"
+    },
+    "no-console": {
+      "severity": "off"
     }
   }
 }

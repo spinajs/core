@@ -14,7 +14,7 @@ declare var jasmine: any;
 /**
  * App version struct
  */
-interface FrameworkVersion {
+interface IFrameworkVersion {
   minor: number;
   major: number;
 }
@@ -26,7 +26,7 @@ function log(message: string) {
 function merge(to: any, from: any): void {
   _.mergeWith(to, from, (src, dest) => {
     if (_.isArray(src) && _.isArray(dest)) {
-      var tmp = src.concat(dest);
+      const tmp = src.concat(dest);
       return _.uniqWith(tmp, _.isEqual);
     } else if (!src) {
       return dest;
@@ -69,17 +69,17 @@ export class FrameworkConfiguration extends Configuration {
   /**
    * Loaded & merged configuration
    */
-  protected _config: any = {};
+  protected Config: any = {};
 
   /**
    * Configuration base dir, where to look for app config
    */
-  protected _baseDir: string = './';
+  protected BaseDir: string = './';
 
   /**
    * Current running app name
    */
-  protected _runApp: string = undefined;
+  protected RunApp: string = undefined;
 
   /**
    *
@@ -95,12 +95,8 @@ export class FrameworkConfiguration extends Configuration {
       commander.parse(process.argv);
     }
 
-    this._runApp = app || commander.app;
-    this._baseDir = commander.apppath ? commander.apppath : appBaseDir ? appBaseDir : join(__dirname, '../apps/');
-  }
-
-  protected dir(toJoin: string) {
-    return normalize(join(resolve(this._baseDir), toJoin));
+    this.RunApp = app || commander.app;
+    this.BaseDir = commander.apppath ? commander.apppath : appBaseDir ? appBaseDir : join(__dirname, '../apps/');
   }
 
   /**
@@ -110,11 +106,15 @@ export class FrameworkConfiguration extends Configuration {
    * @param defaultValue - optional, if value at specified path not exists returns default value
    */
   public get<T>(path: string[] | string, defaultValue?: T): T {
-    return _.get(this._config, path, defaultValue);
+    return _.get(this.Config, path, defaultValue);
+  }
+
+  protected dir(toJoin: string) {
+    return normalize(join(resolve(this.BaseDir), toJoin));
   }
 
   protected async onInitialize() {
-    this._configureApp();
+    this.configureApp();
 
     this.CONFIG_DIRS.filter(_filterDirs)
       // get all config files
@@ -135,11 +135,11 @@ export class FrameworkConfiguration extends Configuration {
       // load modules
       .map(require)
       // load & merge configs
-      .map(_.curry(merge)(this._config));
+      .map(_.curry(merge)(this.Config));
 
-    this._version();
+    this.version();
     this._appDirs();
-    this._configure();
+    this.configure();
 
     function _filterDirs(dir: string) {
       if (fs.existsSync(dir)) {
@@ -154,12 +154,12 @@ export class FrameworkConfiguration extends Configuration {
    * adds app dirs to system.dirs config
    */
   protected _appDirs() {
-    if (_.isEmpty(this._runApp)) {
+    if (_.isEmpty(this.RunApp)) {
       return;
     }
 
-    for (let prop in this.get(['system', 'dirs'], [])) {
-      this.get<string[]>(['system', 'dirs', prop]).push(this.dir(`/${this._runApp}/${prop}`));
+    for (const prop of Object.keys(this.get(['system', 'dirs'], []))) {
+      this.get<string[]>(['system', 'dirs', prop]).push(this.dir(`/${this.RunApp}/${prop}`));
     }
   }
 
@@ -167,9 +167,9 @@ export class FrameworkConfiguration extends Configuration {
    * runs configuration func on files
    * eg. when you want to configure stuff at beginning eq. external libs
    */
-  protected _configure() {
-    for (let prop in this._config) {
-      const subconfig = this._config[prop];
+  protected configure() {
+    for (const prop of Object.keys(this.Config)) {
+      const subconfig = this.Config[prop];
 
       if (_.isFunction(subconfig.configure)) {
         subconfig.configure.call(subconfig);
@@ -180,8 +180,8 @@ export class FrameworkConfiguration extends Configuration {
   /**
    * Just prints framework version
    */
-  protected _version() {
-    const version = this.get<FrameworkVersion>('system.version', undefined);
+  protected version() {
+    const version = this.get<IFrameworkVersion>('system.version', undefined);
 
     if (version) {
       log(`FRAMEWORK VERSION: ${version.major}.${version.minor}`);
@@ -193,10 +193,10 @@ export class FrameworkConfiguration extends Configuration {
   /**
    * Gets app name passed to CLI & adds proper config dirs to merge
    */
-  protected _configureApp() {
-    if (_.isString(this._runApp)) {
-      log(`Application to run: ${this._runApp}`);
-      this.CONFIG_DIRS.push(this.dir(`/${this._runApp}/config`));
+  protected configureApp() {
+    if (typeof this.RunApp === 'string') {
+      log(`Application to run: ${this.RunApp}`);
+      this.CONFIG_DIRS.push(this.dir(`/${this.RunApp}/config`));
     }
   }
 }

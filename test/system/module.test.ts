@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import 'mocha';
 import { ModuleBase } from './../../src/system/module';
-import { DI } from "./../../src/system/di";
 
 class TestModule extends ModuleBase {
     constructor() {

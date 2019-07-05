@@ -130,7 +130,6 @@ describe("Dependency injection", () => {
         const dep = lazyinject.Instance;
         expect(dep).to.be.a("promise");
 
-
         const resolvedDep = await dep;
         expect(resolvedDep).to.be.instanceof(LazyInjectDep);
 
