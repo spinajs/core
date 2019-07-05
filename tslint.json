@@ -8,6 +8,9 @@
     },
     "no-instanceof-operator": {
       "severity": "off"
+    },
+    "imports-after-export": {
+      "severity": "off"
     }
   }
 }

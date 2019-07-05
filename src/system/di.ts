@@ -1,12 +1,9 @@
 import 'reflect-metadata';
-
-import { isString } from 'util';
-
-import { ModuleBase } from './module';
 import { ServiceFactory } from './di';
+import { GlobalEvents } from './events';
 import { ArgumentException } from './exceptions';
 import _ from './lodash';
-import { GlobalEvents } from './events';
+import { ModuleBase } from './module';
 
 /**
  * Global symbol used as property key on class
@@ -43,6 +40,7 @@ export type ServiceIdentifier = new (...args: any[]) => any;
 /**
  * Custom type to check if passed arg is abstract class
  */
+// tslint:disable-next-line: ban-types
 export type AbstractServiceIdentifier = Function & { prototype: any };
 
 /**
@@ -70,18 +68,18 @@ export interface IBind {
 /**
  * Injection description definition structure
  */
-interface InjectDescriptor {
-  inject: ToInject[];
+interface IInjectDescriptor {
+  inject: IToInject[];
   resolver: ResolveType;
 }
 
-interface ToInject {
+interface IToInject {
   inject: ServiceIdentifier;
   autoinject: boolean;
   autoinjectKey: string;
 }
 
-interface ResolvedInjection {
+interface IResolvedInjection {
   instance: any;
   autoinject: boolean;
   autoinjectKey: string;
@@ -90,8 +88,8 @@ interface ResolvedInjection {
 /**
  * Injectable definition. If class implements this, means that have information about DI behaviour.
  */
-interface Injectable {
-  _di: InjectDescriptor;
+interface IInjectable {
+  _di: IInjectDescriptor;
 }
 
 /**
@@ -119,14 +117,14 @@ interface Injectable {
  *
  * ```
  */
-export function Inject(...args: (ServiceIdentifier | AbstractServiceIdentifier)[]) {
+export function Inject(...args: Array<ServiceIdentifier | AbstractServiceIdentifier>) {
   return (target: any) => {
     _initializeDi(target);
     for (const a of args) {
       target[DI_DESCRIPTION_SYMBOL]._di.inject.push({
-        inject: a,
         autoinject: false,
         autoinjectKey: '',
+        inject: a,
       });
     }
   };
@@ -161,9 +159,9 @@ export function Autoinject(target: any, key: string | symbol) {
 
   const type = Reflect.getMetadata('design:type', target, key);
   target.constructor[DI_DESCRIPTION_SYMBOL]._di.inject.push({
-    inject: type,
     autoinject: true,
     autoinjectKey: key,
+    inject: type,
   });
 }
 
@@ -192,8 +190,8 @@ export function Autoinject(target: any, key: string | symbol) {
 export function LazyInject(service: ServiceIdentifier | string) {
   return (target?: any, key?: string) => {
     // property getter
-    var getter = function() {
-      if (isString(service)) {
+    const getter = () => {
+      if (typeof  service === "string") {
         return DI.get<any>(service);
       } else {
         return DI.resolve<any>(service);
@@ -202,9 +200,9 @@ export function LazyInject(service: ServiceIdentifier | string) {
 
     // Create new property with getter and setter
     Object.defineProperty(target, key, {
-      get: getter,
-      enumerable: false,
       configurable: true,
+      enumerable: false,
+      get: getter,
     });
   };
 }
@@ -247,15 +245,15 @@ export function Singleton() {
  *
  * @see FrameworkModuleResolveStrategy implementation
  */
-export interface ResolveStrategy {
+export interface IResolveStrategy {
   resolve: (target: any, container: Container) => any;
 }
 
 /**
  * Resolve strategy to initialize framework internal modules.
  */
-export class FrameworkModuleResolveStrategy implements ResolveStrategy {
-  async resolve(target: any, _container: Container) {
+export class FrameworkModuleResolveStrategy implements IResolveStrategy {
+  public async resolve(target: any) {
     if (target instanceof ModuleBase) {
       const ev = GlobalEvents;
 
@@ -274,7 +272,7 @@ export class FrameworkModuleResolveStrategy implements ResolveStrategy {
  * @hidden
  */
 function _initializeDi(target: any): void {
-  if (target[DI_DESCRIPTION_SYMBOL] == undefined) {
+  if (target[DI_DESCRIPTION_SYMBOL] === undefined) {
     target[DI_DESCRIPTION_SYMBOL] = {
       _di: {
         inject: [],
@@ -293,44 +291,44 @@ export class Container {
    * eg. that class IConfiguration should be resolved as DatabaseConfiguration etc.
    * @access private
    */
-  private _registry: Map<ServiceIdentifier | AbstractServiceIdentifier, ServiceIdentifier | ServiceFactory>;
+  private registry: Map<ServiceIdentifier | AbstractServiceIdentifier, ServiceIdentifier | ServiceFactory>;
 
   /**
    * Singletons cache, objects that should be created only once are stored here.
    * @access private
    */
-  private _cache: Map<string, any>;
+  private cache: Map<string, any>;
 
   /**
    * Resolve strategy array.
    */
-  private _strategies: ResolveStrategy[] = [];
+  private strategies: IResolveStrategy[] = [];
 
   /**
    * Parent container if avaible
    */
-  private _parent: Container = undefined;
+  private parent: Container = undefined;
 
   /**
    * Returns container cache - map object with resolved classes as singletons
    */
   get Cache() {
-    return this._cache;
+    return this.cache;
   }
 
-  get ResolveStrategies(): ResolveStrategy[] {
-    return this._strategies;
+  get ResolveStrategies(): IResolveStrategy[] {
+    return this.strategies;
   }
 
   constructor(parent?: Container) {
-    this._registry = new Map<ServiceIdentifier | AbstractServiceIdentifier, ServiceIdentifier>();
-    this._cache = new Map<string, any>();
+    this.registry = new Map<ServiceIdentifier | AbstractServiceIdentifier, ServiceIdentifier>();
+    this.cache = new Map<string, any>();
 
     if (parent) {
-      this._strategies = parent.ResolveStrategies.slice(0);
+      this.strategies = parent.ResolveStrategies.slice(0);
     }
 
-    this._parent = parent;
+    this.parent = parent;
   }
 
   /**
@@ -338,16 +336,16 @@ export class Container {
    *
    * @param strategy - strategy to add
    */
-  public addStrategy(strategy: ResolveStrategy) {
-    this._strategies.push(strategy);
+  public addStrategy(strategy: IResolveStrategy) {
+    this.strategies.push(strategy);
   }
 
   /**
    * Clears container registry and cache.
    */
   public clear() {
-    this._cache.clear();
-    this._registry.clear();
+    this.cache.clear();
+    this.registry.clear();
   }
 
   /**
@@ -364,10 +362,10 @@ export class Container {
 
     return {
       as: (type: ServiceIdentifier | AbstractServiceIdentifier) => {
-        self._registry.set(type, implementation);
+        self.registry.set(type, implementation);
       },
       asSelf: () => {
-        self._registry.set(implementation, implementation);
+        self.registry.set(implementation, implementation);
       },
     };
   }
@@ -389,10 +387,10 @@ export class Container {
   public get(service: string | ServiceIdentifier | AbstractServiceIdentifier, parent = true): any {
     const identifier = typeof service === 'string' ? service : service.constructor.name;
 
-    if (this._cache.has(identifier)) {
-      return this._cache.get(identifier);
-    } else if (this._parent && parent) {
-      return this._parent.get(service);
+    if (this.cache.has(identifier)) {
+      return this.cache.get(identifier);
+    } else if (this.parent && parent) {
+      return this.parent.get(service);
     }
 
     return null;
@@ -413,12 +411,12 @@ export class Container {
 
     const name = _.isString(service) ? service : service.constructor.name;
 
-    if (this._cache.has(name)) {
+    if (this.cache.has(name)) {
       return true;
     }
 
-    if (this._parent && parent) {
-      return this._parent.has(name);
+    if (this.parent && parent) {
+      return this.parent.has(name);
     }
 
     return false;
@@ -442,16 +440,16 @@ export class Container {
       throw new ArgumentException('argument `type` cannot be null or undefined');
     }
 
-    let target = this._registry.has(<ServiceIdentifier>type) ? this._registry.get(<ServiceIdentifier>type) : type;
+    const target = this.registry.has(type as ServiceIdentifier) ? this.registry.get(type as ServiceIdentifier) : type;
 
     /**
      * Double cast to remove typescript errors, we are sure that needed properties are in class definition
      */
-    let descriptor = <Injectable>(
-      ((<any>target)[DI_DESCRIPTION_SYMBOL] || { _di: { inject: [], resolver: ResolveType.Singleton } })
-    );
+    const descriptor = (
+      ((target as any)[DI_DESCRIPTION_SYMBOL] || { _di: { inject: [], resolver: ResolveType.Singleton } })
+    ) as IInjectable;
 
-    const toInject: ResolvedInjection[] = await Promise.all(
+    const toInject: IResolvedInjection[] = await Promise.all(
       descriptor._di.inject.map(async t => {
         return {
           autoinject: t.autoinject,
@@ -484,16 +482,16 @@ export class Container {
       return null;
     }
 
-    async function _getNewInstance(e: any, a?: ResolvedInjection[]): Promise<any> {
+    async function _getNewInstance(e: any, a?: IResolvedInjection[]): Promise<any> {
       let args: any[] = [null];
-      let instance: any = null;
+      let newInstance: any = null;
 
       /**
        * If type is not Constructable, we assume its factory function,
        * just call it with `this` container.
        */
       if (!_.isConstructor(e) && _.isFunction(e)) {
-        instance = (<ServiceFactory>e)(self, ...[].concat(options));
+        newInstance = (e as ServiceFactory)(self, ...[].concat(options));
       } else {
         if (_.isArray(a)) {
           args = args.concat(a.filter(i => !i.autoinject).map(i => i.instance));
@@ -503,21 +501,22 @@ export class Container {
           args = args.concat(options);
         }
 
-        instance = new (Function.prototype.bind.apply(e, args))();
+        newInstance = new (Function.prototype.bind.apply(e, args))();
 
         for (const ai of a.filter(i => i.autoinject)) {
-          instance[ai.autoinjectKey] = ai.instance;
+          newInstance[ai.autoinjectKey] = ai.instance;
         }
 
-        await Promise.all(self._strategies.map(s => s.resolve(instance, self)));
+        await Promise.all(self.strategies.map(s => s.resolve(newInstance, self)));
       }
 
-      self._cache.set(type.name, instance);
-      return instance;
+      self.cache.set(type.name, newInstance);
+      return newInstance;
     }
   }
 }
 
+// tslint:disable-next-line: no-namespace
 export namespace DI {
   /**
    * App main DI container
@@ -562,7 +561,7 @@ export namespace DI {
    * @returns { null | T} - null if no service has been resolved at given name
    */
   export function get<T>(serviceName: string | ServiceIdentifier | AbstractServiceIdentifier): T {
-    return <T>RootContainer.get(serviceName);
+    return RootContainer.get(serviceName) as T;
   }
 
   /**
