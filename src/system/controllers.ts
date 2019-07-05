@@ -29,7 +29,7 @@ export enum RouteParameterType {
   FromParams,
 }
 
-export interface RouteParameterDescriptor {
+export interface IRouteParameterDescriptor {
   Index: number;
   RouteType: RouteParameterType;
   Schema: any;
@@ -44,7 +44,7 @@ export interface RouteParameterDescriptor {
  * @param path controller base path
  */
 export function BasePath(path: string) {
-  return function(target: any) {
+  return (target: any) => {
     const cdesc: ControllerDescriptor = createControllerDescriptor(target.prototype);
     cdesc.BasePath = path;
   };
@@ -56,25 +56,8 @@ export function BasePath(path: string) {
  * @param schema parameter json schema for optional validation
  */
 export function Query(key?: string, schema?: any) {
-  return function(target: any, propertyKey: string, parameterIndex: number) {
-    const cdesc: ControllerDescriptor = createControllerDescriptor(target);
-    const param: RouteParameterDescriptor = {
-      Index: parameterIndex,
-      RouteType: RouteParameterType.FromQuery,
-      Schema: schema,
-      ParameterType: Reflect.getMetadata('design:paramtypes', target, propertyKey)[parameterIndex],
-      ParameterName: key,
-    };
+  return createParameterDescription(key, schema, RouteParameterType.FromQuery);
 
-    if (cdesc.hasRoute(propertyKey)) {
-      cdesc.getRoute(propertyKey).Parameters.push(param);
-    } else {
-      const routedef = new RouteDefinition();
-      routedef.FunctionName = propertyKey;
-      routedef.Parameters.push(param);
-      cdesc.Routes.push(routedef);
-    }
-  };
 }
 
 /**
@@ -83,25 +66,8 @@ export function Query(key?: string, schema?: any) {
  * @param schema parameter json schema for optional validation
  */
 export function Params(key?: string, schema?: any) {
-  return function(target: any, propertyKey: string, parameterIndex: number) {
-    const cdesc: ControllerDescriptor = createControllerDescriptor(target);
-    const param: RouteParameterDescriptor = {
-      Index: parameterIndex,
-      RouteType: RouteParameterType.FromParams,
-      Schema: schema,
-      ParameterType: Reflect.getMetadata('design:paramtypes', target, propertyKey)[parameterIndex],
-      ParameterName: key,
-    };
+  return createParameterDescription(key, schema, RouteParameterType.FromParams);
 
-    if (cdesc.hasRoute(propertyKey)) {
-      cdesc.getRoute(propertyKey).Parameters.push(param);
-    } else {
-      const routedef = new RouteDefinition();
-      routedef.FunctionName = propertyKey;
-      routedef.Parameters.push(param);
-      cdesc.Routes.push(routedef);
-    }
-  };
 }
 
 /**
@@ -110,15 +76,23 @@ export function Params(key?: string, schema?: any) {
  * @param schema parameter json schema for optional validation
  */
 export function Body(key?: string, schema?: any) {
-  return function(target: any, propertyKey: string, parameterIndex: number) {
+  return createParameterDescription(key, schema, RouteParameterType.FromBody);
+}
+
+function createParameterDescription(key: string, schema: any, routeType: RouteParameterType) {
+
+  const param: any = {
+    ParameterName: key,
+    RouteType: RouteParameterType.FromBody,
+    Schema: schema,
+  };
+
+
+  return (target: any, propertyKey: string, parameterIndex: number) => {
     const cdesc: ControllerDescriptor = createControllerDescriptor(target);
-    const param: RouteParameterDescriptor = {
-      Index: parameterIndex,
-      RouteType: RouteParameterType.FromBody,
-      Schema: schema,
-      ParameterType: Reflect.getMetadata('design:paramtypes', target, propertyKey)[parameterIndex],
-      ParameterName: key,
-    };
+
+    param.Index = parameterIndex;
+    param.ParameterType = Reflect.getMetadata('design:paramtypes', target, propertyKey)[parameterIndex];
 
     if (cdesc.hasRoute(propertyKey)) {
       cdesc.getRoute(propertyKey).Parameters.push(param);
@@ -128,7 +102,8 @@ export function Body(key?: string, schema?: any) {
       routedef.Parameters.push(param);
       cdesc.Routes.push(routedef);
     }
-  };
+
+  }
 }
 
 /**
@@ -138,29 +113,30 @@ export function Body(key?: string, schema?: any) {
 /**
  * Internal policy middleware. It only executes policy in OnBeforeAction
  */
-export abstract class PolicyBase implements Middleware {
-  abstract IsEnabled(_action: any): boolean;
+export abstract class PolicyBase implements IMiddleware {
+
+  public abstract isEnabled(action: any): boolean;
 
   /**
    * Executes policy. If policy returns false it throws `ForbiddenException`
    *
    * @param req - express request
    */
-  async OnBeforeAction(req: express.Request) {
-    const result = await this.Execute(req);
+  public async onBeforeAction(req: express.Request) {
+    const result = await this.execute(req);
     if (result === false) {
       throw new ForbiddenException('You do not have access to this resource.');
     }
   }
 
-  async OnAfterAction(_req: express.Request) {}
+  public async onAfterAction(_req: express.Request) { }
 
   /**
    * Should check permission / access to route.
    *
    * @return { boolean } - true if access granted, false otherwise.
    */
-  abstract async Execute(req: express.Request): Promise<boolean>;
+  public abstract async execute(req: express.Request): Promise<boolean>;
 }
 
 /**
@@ -172,7 +148,7 @@ export abstract class PolicyBase implements Middleware {
  * @param options - optional options
  */
 export function Policy(policy: NewablePolicy, options?: any) {
-  return function(target: any) {
+  return (target: any) => {
     const cdesc: ControllerDescriptor = createControllerDescriptor(target.prototype);
     const definition = new MiddlewareDefinition();
     definition.Middleware = policy;
@@ -191,10 +167,13 @@ type NewablePolicy = new (...args: any[]) => PolicyBase;
  * =========================== MIDDLEWARES ================================
  */
 
-export class MiddlewareDefinition {
-  Middleware: NewableMiddleware | Function;
+type MiddlewareFuncion = () => void;
 
-  Options: any;
+export class MiddlewareDefinition {
+
+  public Middleware: NewableMiddleware | MiddlewareFuncion;
+
+  public Options: any;
 }
 
 /**
@@ -204,8 +183,8 @@ export class MiddlewareDefinition {
  * @param mid  - middleware class object
  * @param options  - optional options passed to middleware instance
  */
-export function Middleware(mid: NewableMiddleware | Function, options?: any) {
-  return function(target: any, method?: string) {
+export function Middleware(mid: NewableMiddleware | MiddlewareFuncion, options?: any) {
+  return (target: any, method?: string) => {
     const definition = new MiddlewareDefinition();
     definition.Middleware = mid;
     definition.Options = options;
@@ -228,26 +207,26 @@ export function Middleware(mid: NewableMiddleware | Function, options?: any) {
   };
 }
 
-type NewableMiddleware = new (...args: any[]) => Middleware;
+type NewableMiddleware = new (...args: any[]) => IMiddleware;
 
 /**
  * Middleware interface declaration. Use it to implement custom route middlewares
  */
-export interface Middleware {
+export interface IMiddleware {
   /**
    * Inform, if middleware is enabled for given action
    */
-  IsEnabled(action: RouteDefinition, instance: BaseController): boolean;
+  isEnabled(action: RouteDefinition, instance: BaseController): boolean;
 
   /**
    * Called before action in middleware stack eg. to modify req or resp objects.
    */
-  OnBeforeAction(req: express.Request): Promise<any>;
+  onBeforeAction(req: express.Request): Promise<any>;
 
   /**
    * Called after action in middleware stack eg. to modify response
    */
-  OnAfterAction(req: express.Request): Promise<any>;
+  onAfterAction(req: express.Request): Promise<any>;
 }
 
 /**
@@ -289,7 +268,7 @@ export class RouteDefinition {
   /**
    * Custom route parameters taken from query string or message body
    */
-  public Parameters: RouteParameterDescriptor[] = [];
+  public Parameters: IRouteParameterDescriptor[] = [];
 
   /**
    * Assigned middlewares to route
@@ -305,9 +284,8 @@ export class RouteDefinition {
  * @param routeName - route name, that is exposed in api eg. `find` or `first`
  * @param type - HTTP request method
  */
-function _createRoute(path: string, routeName: string, type: ROUTE_TYPE): RouteFunction {
-  return function(target: any, method: string, _descriptor: PropertyDescriptor): void {
-    //const originalMethod = descriptor.value;
+function createRoute(path: string, routeName: string, type: ROUTE_TYPE): RouteFunction {
+  return (target: any, method: string): void => {
 
     const cdesc: ControllerDescriptor = createControllerDescriptor(target);
     const finalName: string = _.isNil(routeName) ? method : routeName;
@@ -330,12 +308,6 @@ function _createRoute(path: string, routeName: string, type: ROUTE_TYPE): RouteF
       default:
         def.Type = type;
     }
-
-    // descriptor.value = function (req: express.Request, res: express.Response) {
-
-    //     // TODO extract parameter decorators, apply schema and call original function
-
-    // }
 
     if (cdesc.hasRoute(method)) {
       cdesc.updateRoute(def);
@@ -399,7 +371,7 @@ export enum ROUTE_TYPE {
  * @param routeName - route name visible in api. If undefined, method name is taken
  */
 export function Head(path?: string, routeName?: string): RouteFunction {
-  return _createRoute(path, routeName, ROUTE_TYPE.HEAD);
+  return createRoute(path, routeName, ROUTE_TYPE.HEAD);
 }
 
 /**
@@ -408,7 +380,7 @@ export function Head(path?: string, routeName?: string): RouteFunction {
  * @param routeName - route name visible in api. If undefined, method name is taken
  */
 export function Patch(path?: string, routeName?: string): RouteFunction {
-  return _createRoute(path, routeName, ROUTE_TYPE.PATCH);
+  return createRoute(path, routeName, ROUTE_TYPE.PATCH);
 }
 
 /**
@@ -417,7 +389,7 @@ export function Patch(path?: string, routeName?: string): RouteFunction {
  * @param routeName - route name visible in api. If undefined, method name is taken
  */
 export function Del(path?: string, routeName?: string): RouteFunction {
-  return _createRoute(path, routeName, ROUTE_TYPE.DELETE);
+  return createRoute(path, routeName, ROUTE_TYPE.DELETE);
 }
 
 /**
@@ -426,7 +398,7 @@ export function Del(path?: string, routeName?: string): RouteFunction {
  * @param routeName - route name visible in api. If undefined, method name is taken
  */
 export function File(path?: string, routeName?: string): RouteFunction {
-  return _createRoute(path, routeName, ROUTE_TYPE.FILE);
+  return createRoute(path, routeName, ROUTE_TYPE.FILE);
 }
 
 /**
@@ -435,7 +407,7 @@ export function File(path?: string, routeName?: string): RouteFunction {
  * @param routeName - route name visible in api. If undefined, method name is taken
  */
 export function Put(path?: string, routeName?: string): RouteFunction {
-  return _createRoute(path, routeName, ROUTE_TYPE.PUT);
+  return createRoute(path, routeName, ROUTE_TYPE.PUT);
 }
 
 /**
@@ -444,7 +416,7 @@ export function Put(path?: string, routeName?: string): RouteFunction {
  * @param routeName - route name visible in api. If undefined, method name is taken
  */
 export function Get(path?: string, routeName?: string): RouteFunction {
-  return _createRoute(path, routeName, ROUTE_TYPE.GET);
+  return createRoute(path, routeName, ROUTE_TYPE.GET);
 }
 
 /**
@@ -454,7 +426,7 @@ export function Get(path?: string, routeName?: string): RouteFunction {
  * @param routeName - route name visible in api. If undefined, method name is taken
  */
 export function Post(path?: string, routeName?: string): RouteFunction {
-  return _createRoute(path, routeName, ROUTE_TYPE.POST);
+  return createRoute(path, routeName, ROUTE_TYPE.POST);
 }
 
 export class ControllerDescriptor {
@@ -483,7 +455,7 @@ export class ControllerDescriptor {
 /**
  * Basic interface of controller
  */
-export interface Controller {
+export interface IController {
   /**
    * Array index getter
    */
@@ -498,7 +470,7 @@ export interface Controller {
 /**
  * Base controller class. Use it to create controllers
  */
-export class BaseController implements Controller {
+export class BaseController implements IController {
   /**
    * Array index getter
    */
@@ -513,7 +485,7 @@ export class BaseController implements Controller {
 /**
  * Events specific for controllers
  */
-export interface ControllerEvents extends ModuleEvents {
+export interface IControllerEvents extends ModuleEvents {
   beforeRegisterAction: (action: RouteDefinition, controller: BaseController) => void;
 
   afterRegisterAction: (action: RouteDefinition, controller: BaseController) => void;
@@ -529,7 +501,14 @@ type RouteCallback = (
   next: express.NextFunction,
 ) => (req: express.Request, res: express.Response) => void;
 
-export class Controllers extends ModuleBase<ControllerEvents> {
+export class Controllers extends ModuleBase<IControllerEvents> {
+
+  /**
+   * Loaded controllers
+   */
+  @FromFiles('/**/*Controller.{ts,js}', 'system.dirs.controllers')
+  public Controllers: Promise<Array<ClassInfo<IController>>>;
+
   /**
    * Application configuration
    */
@@ -545,11 +524,7 @@ export class Controllers extends ModuleBase<ControllerEvents> {
   @Logger({ module: 'Controllers' })
   protected Log: Log;
 
-  /**
-   * Loaded controllers
-   */
-  @FromFiles('/**/*Controller.{ts,js}', 'system.dirs.controllers')
-  public Controllers: Promise<ClassInfo<Controller>[]>;
+
 
   public async onInitialize() {
     const controllers = await this.Controllers;
@@ -563,14 +538,15 @@ export class Controllers extends ModuleBase<ControllerEvents> {
         .substring(0, instance.constructor.name.indexOf('Controller'))
         .toLowerCase();
 
-      for (let route of cdesc.Routes) {
+      for (const route of cdesc.Routes) {
+
+        let path = '';
         const handlers: RequestHandler[] = [];
         const action: RouteCallback = instance[route.FunctionName];
-        const middlewares = await Promise.all<Middleware>(
+        const rootPath = cdesc.BasePath ? cdesc.BasePath : controllerName;
+        const middlewares = await Promise.all<IMiddleware>(
           cdesc.Middlewares.concat(route.Middlewares || []).map(m => DI.resolve(m.Middleware, m.Options)),
         );
-        let rootPath = cdesc.BasePath ? cdesc.BasePath : controllerName;
-        let path = '';
 
         if (!route.Path) {
           path = `/${rootPath}/${route.FunctionName}`;
@@ -581,9 +557,9 @@ export class Controllers extends ModuleBase<ControllerEvents> {
         await this.emit('beforeRegisterAction', route, instance);
 
         handlers.push(
-          ...middlewares.filter(m => m.IsEnabled(route, instance)).map(m => _invokeAction(m.OnBeforeAction.bind(m))),
+          ...middlewares.filter(m => m.isEnabled(route, instance)).map(m => _invokeAction(m.onBeforeAction.bind(m))),
         );
-        handlers.push(async function(req: express.Request, res: express.Response, next: express.NextFunction) {
+        handlers.push(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
           const rdef = cdesc.getRoute(route.FunctionName);
           const args = _extractArgs(rdef, req).concat([req, res, next]);
 
@@ -596,7 +572,7 @@ export class Controllers extends ModuleBase<ControllerEvents> {
           next();
         });
         handlers.push(
-          ...middlewares.filter(m => m.IsEnabled(route, instance)).map(m => _invokeAction(m.OnAfterAction.bind(m))),
+          ...middlewares.filter(m => m.isEnabled(route, instance)).map(m => _invokeAction(m.onAfterAction.bind(m))),
         );
 
         this.Log.trace(`Route registered: ${route.Type}: ${path}`);
