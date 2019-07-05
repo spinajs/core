@@ -13,7 +13,7 @@ export const CLI_DESCRIPTOR_SYMBOL = Symbol.for('CLI_DESCRIPTOR');
 /**
  * Cli argument description
  */
-export interface CliArgument {
+export interface ICliArgument {
   /**
    * Cli option eg.  -s, --string
    */
@@ -28,7 +28,7 @@ export interface CliArgument {
 /**
  * Cli command interface declaration.
  */
-export interface CliCommand {
+export interface ICliCommand {
   /**
    * Command name
    */
@@ -40,10 +40,9 @@ export interface CliCommand {
   execute: (...args: any[]) => void;
 }
 
-export abstract class CliCommandBase implements CliCommand {
+export abstract class CliCommandBase implements ICliCommand {
   public get Name(): string {
-    const desc = <CliDescriptor>(<any>this.constructor)[CLI_DESCRIPTOR_SYMBOL];
-
+    const desc = (this.constructor as any)[CLI_DESCRIPTOR_SYMBOL] as CliDescriptor;
     return desc.Name;
   }
 
@@ -53,7 +52,7 @@ export abstract class CliCommandBase implements CliCommand {
 /**
  * Cli option description. Its passed as command arguments
  */
-export interface CliOption {
+export interface ICliOption {
   /**
    * Param definition.
    * @see commander params definition examples
@@ -83,21 +82,21 @@ export class CliDescriptor {
   /**
    * Name of command eg. test:cli
    */
-  Name: string = '';
+  public Name: string = '';
 
   /**
    * Command general description, used when displaying help
    */
-  Description: string = '';
+  public Description: string = '';
 
   /**
    * Cli commands options
    * @see CliOption
    */
-  Options: CliOption[] = [];
+  public Options: ICliOption[] = [];
 }
 
-function _initializeCLICommand(target: any) {
+function initializeCLICommand(target: any) {
   if (target[CLI_DESCRIPTOR_SYMBOL] === undefined) {
     target[CLI_DESCRIPTOR_SYMBOL] = new CliDescriptor();
   }
@@ -122,12 +121,12 @@ function _initializeCLICommand(target: any) {
  */
 export function Cli(name: string, description: string) {
   return (target: any) => {
-    _initializeCLICommand(target);
+    initializeCLICommand(target);
 
-    const _descriptor = <CliDescriptor>target[CLI_DESCRIPTOR_SYMBOL];
+    const descriptor = target[CLI_DESCRIPTOR_SYMBOL] as CliDescriptor;
 
-    _descriptor.Name = name;
-    _descriptor.Description = description;
+    descriptor.Name = name;
+    descriptor.Description = description;
   };
 }
 
@@ -165,35 +164,43 @@ export function Cli(name: string, description: string) {
  */
 export function CliOption(params: string, description: string) {
   return (target: any) => {
-    _initializeCLICommand(target);
+    initializeCLICommand(target);
 
-    const _descriptor = <CliDescriptor>target[CLI_DESCRIPTOR_SYMBOL];
+    const descriptor = target[CLI_DESCRIPTOR_SYMBOL] as CliDescriptor;
 
-    _descriptor.Options.push({
-      Params: params,
+    descriptor.Options.push({
       Description: description,
+      Params: params,
     });
   };
 }
 
-export interface CliModule extends FrameworkModule {
+export interface ICliModule extends FrameworkModule {
   /**
    * Avaible commands ready to run
    */
-  Commands: Promise<ClassInfo<CliCommand>[]>;
+  Commands: Promise<Array<ClassInfo<ICliCommand>>>;
 
   /**
    * Gets command by name
    *
    * @param name name of command
    */
-  get(name: string): Promise<CliCommand>;
+  get(name: string): Promise<ICliCommand>;
 }
 
 /**
  * Cli module implementation. Loads all commands from defined paths in config & prepares them to use.
  */
-export class FrameworkCliModule extends ModuleBase implements CliModule {
+export class FrameworkCliModule extends ModuleBase implements ICliModule {
+
+
+  /**
+   * Avaible commands ready to run
+   */
+  @FromFiles('/**/*Cli.{js,ts}', 'system.dirs.cli')
+  public Commands: Promise<ClassInfo<ICliCommand>[]>;
+
   /**
    * Global configuration. It takes `system.dirs.cli` variable with array of dirs to check
    */
@@ -206,12 +213,6 @@ export class FrameworkCliModule extends ModuleBase implements CliModule {
   private Args: string[];
 
   /**
-   * Avaible commands ready to run
-   */
-  @FromFiles('/**/*Cli.{js,ts}', 'system.dirs.cli')
-  public Commands: Promise<ClassInfo<CliCommand>[]>;
-
-  /**
    * Constructs CLI module
    *
    * @param args command line args array (eg process.argv)
@@ -222,14 +223,34 @@ export class FrameworkCliModule extends ModuleBase implements CliModule {
     this.Args = args;
   }
 
+  /**
+   * Gets command by name
+   *
+   * @param name name of command
+   */
+  public async get(name: string): Promise<ICliCommand> {
+    
+    if (_.isEmpty(name) || _.isNil(name)) {
+      throw new ArgumentException(`parameter name is null or empty`);
+    }
+
+    for (const c of await this.Commands) {
+      if (c.Instance.Name === name) {
+        return c.Instance;
+      }
+    }
+
+    return null;
+  }
+
   protected async onInitialize() {
     commander.version(`Spine version: ${this.Cfg.get('system.version', '1.1')}`);
 
     for (const command of await this.Commands) {
-      const _descriptor = <CliDescriptor>(<any>command.Type)[CLI_DESCRIPTOR_SYMBOL];
+      const descriptor = command.Type[CLI_DESCRIPTOR_SYMBOL] as CliDescriptor;
 
-      const _c = commander.command(_descriptor.Name).description(_descriptor.Description);
-      _descriptor.Options.forEach(o => {
+      const _c = commander.command(descriptor.Name).description(descriptor.Description);
+      descriptor.Options.forEach(o => {
         _c.option(o.Params, o.Description);
       });
 
@@ -252,24 +273,5 @@ export class FrameworkCliModule extends ModuleBase implements CliModule {
     }
 
     commander.parse(this.Args);
-  }
-
-  /**
-   * Gets command by name
-   *
-   * @param name name of command
-   */
-  async get(name: string): Promise<CliCommand> {
-    if (_.isEmpty(name) || _.isNil(name)) {
-      throw new ArgumentException(`parameter name is null or empty`);
-    }
-
-    for (const c of await this.Commands) {
-      if (c.Instance.Name === name) {
-        return c.Instance;
-      }
-    }
-
-    return null;
   }
 }
