@@ -3,8 +3,8 @@ import { RequestHandler } from 'express-serve-static-core';
 
 import { ValidationException } from './exceptions';
 import {
-    Autoinject, ClassInfo, Configuration, DI, Exception, ForbiddenException, FromFiles, HttpServer,
-    Log, Logger, ModuleBase, ModuleEvents, ServerErrorException
+  Autoinject, ClassInfo, Configuration, DI, Exception, ForbiddenException, FromFiles, HttpServer,
+  Log, Logger, ModuleBase, ModuleEvents, ServerErrorException
 } from './index';
 import _ from './lodash';
 import { Schema } from './schema';
@@ -92,7 +92,6 @@ function createParameterDescription(key: string, schema: any, routeType: RoutePa
       routedef.Parameters.push(param);
       cdesc.Routes.push(routedef);
     }
-
   }
 }
 
@@ -101,34 +100,61 @@ function createParameterDescription(key: string, schema: any, routeType: RoutePa
  */
 
 /**
- * Internal policy middleware. It only executes policy in OnBeforeAction
+ * Policy interface. To create new route or controller policy simply implement this interface and assign it via @Policy decorator.
+ * 
+ * Policies are shortcut for defining permissions for controllers / routes eg. check if user is logged or token is passed for accesing resource.
+ * 
+ * @example
+ * ```typescript
+ * 
+ * /**
+ * * Controller policy - policy is assigned for all actions in controller.
+ * *\/
+ * @Policy(UserLoggedPolicy)
+ * class UserController
+ * {
+ *   // ... controller implementation
+ * }
+ * 
+ * 
+ * /**
+ * * Route policy - policy is assigned only for specific route
+ *  *\/
+ * 
+ * class UserController
+ * {
+ * 
+ *   @Policy(IsAdmin)
+ *   public async DeleteUser(){
+ *   
+ *       // ... 
+ * 
+ *   }
+ * 
+ * }
+ * ```
+ * 
  */
-export abstract class PolicyBase implements IMiddleware {
-
-  public abstract isEnabled(action: any): boolean;
+ export interface IPolicy {
 
   /**
-   * Executes policy. If policy returns false it throws `ForbiddenException`
-   *
-   * @param req - express request
+   * Should this policy be applied for specified route
+   * 
+   * @param { RouteDefinition } route - route to check
+   * @param { IController } controller route owner 
+   * @returns { boolean } true if policy should be applied, false otherwise
    */
-  public async onBeforeAction(req: express.Request) {
-    const result = await this.execute(req);
-    if (result === false) {
-      throw new ForbiddenException('You do not have access to this resource.');
-    }
-  }
-
-// tslint:disable-next-line: no-empty
-  public async onAfterAction() { }
+  isEnabled(route : RouteDefinition, controller : IController): boolean;
 
   /**
-   * Should check permission / access to route.
+   * Executes policy to route. If policy returns false, route is forbidden from executing.
    *
    * @return { boolean } - true if access granted, false otherwise.
    */
-  public abstract async execute(req: express.Request): Promise<boolean>;
+  execute(req: express.Request): Promise<boolean>;
+
 }
+
 
 /**
  * Adds policy to class/action. Policy is shortcut to define security layer to routes.
@@ -142,13 +168,17 @@ export function Policy(policy: NewablePolicy, options?: any) {
   return (target: any) => {
     const cdesc: ControllerDescriptor = createControllerDescriptor(target.prototype);
     const definition = new MiddlewareDefinition();
-    definition.Middleware = policy;
+    definition.Middleware = async () =>{ 
+      
+      const pInst
+
+    };
     definition.Options = options;
     cdesc.Middlewares.push(definition);
   };
 }
 
-type NewablePolicy = new (...args: any[]) => PolicyBase;
+type NewablePolicy = new (...args: any[]) => IPolicy;
 
 /**
  * Policy interface. Implement it to create new policy.
@@ -158,11 +188,9 @@ type NewablePolicy = new (...args: any[]) => PolicyBase;
  * =========================== MIDDLEWARES ================================
  */
 
-type MiddlewareFuncion = () => void;
-
 export class MiddlewareDefinition {
 
-  public Middleware: NewableMiddleware | MiddlewareFuncion;
+  public Middleware: NewableMiddleware;
 
   public Options: any;
 }
@@ -174,7 +202,7 @@ export class MiddlewareDefinition {
  * @param mid  - middleware class object
  * @param options  - optional options passed to middleware instance
  */
-export function Middleware(mid: NewableMiddleware | MiddlewareFuncion, options?: any) {
+export function Middleware(mid: NewableMiddleware, options?: any) {
   return (target: any, method?: string) => {
     const definition = new MiddlewareDefinition();
     definition.Middleware = mid;
@@ -207,7 +235,7 @@ export interface IMiddleware {
   /**
    * Inform, if middleware is enabled for given action
    */
-  isEnabled(action: RouteDefinition, instance: BaseController): boolean;
+  isEnabled(action: RouteDefinition, instance: IController): boolean;
 
   /**
    * Called before action in middleware stack eg. to modify req or resp objects.
@@ -514,8 +542,6 @@ export class Controllers extends ModuleBase<IControllerEvents> {
 
   @Logger({ module: 'Controllers' })
   protected Log: Log;
-
-
 
   public async onInitialize() {
     const controllers = await this.Controllers;

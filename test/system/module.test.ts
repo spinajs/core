@@ -6,7 +6,7 @@ class TestModule extends ModuleBase {
     constructor() {
         super();
 
-        this._name = "Test module";
+        this.Name = "Test module";
     }
 
     protected async onInitialize() {
