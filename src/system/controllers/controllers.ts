@@ -285,6 +285,9 @@ export class BaseController extends ModuleBase {
         return this.Metadata.BasePath ? this.Metadata.BasePath : this.Name.substring(0, this.Name.indexOf("Controller")).toLowerCase();
     }
 
+    /**
+     * Get controller metadata eg. registered routes & route parameters, middlewares etc.
+     */
     public get Metadata(): IControllerMetadata {
         return Reflect.getMetadata(ControllerKey, this) as IControllerMetadata;
     }
