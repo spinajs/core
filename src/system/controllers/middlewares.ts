@@ -1,5 +1,5 @@
-import * as express from "express";
-import { IController } from './../controllers';
+import * as express from 'express';
+import { BaseController } from './controllers';
 import { IRoute } from "./routes";
 
 export type NewableMiddleware = new (...args: any[]) => IMiddleware;
@@ -15,7 +15,7 @@ export abstract class BaseMiddleware {
     /**
      * Inform, if middleware is enabled for given action
      */
-    public abstract isEnabled(action: IRoute, instance: IController): boolean;
+    public abstract isEnabled(action: IRoute, instance: BaseController): boolean;
 
     /**
      * Called before action in middleware stack eg. to modify req or resp objects.
