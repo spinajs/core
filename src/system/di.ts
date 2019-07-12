@@ -87,14 +87,7 @@ interface IResolvedInjection {
   autoinject: boolean;
   autoinjectKey: string;
 }
-
-/**
- * Injectable definition. If class implements this, means that have information about DI behaviour.
- */
-interface IInjectable {
-  _di: IInjectDescriptor;
-}
-
+ 
 /**
  * Sets dependency injection guidelines - what to inject for specified class. If multiple instances are registered at specified type,
  * only first one is resolved and injected

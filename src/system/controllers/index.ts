@@ -383,7 +383,7 @@ export class ControllersModule extends ModuleBase {
     @FromFiles('/**/*Controller.{ts,js}', 'system.dirs.controllers')
     public Controllers: Promise<Array<ClassInfo<BaseController>>>;
 
-    @Autoinject
+    @Autoinject()
     protected HttpServer: HttpServer;
 
     public async  initialize(): Promise<void> {

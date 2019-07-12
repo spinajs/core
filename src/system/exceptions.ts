@@ -1,5 +1,3 @@
-import * as mysql from 'mysql';
-
 /**
  * Base class of all exceptions in framework
  */
@@ -82,31 +80,4 @@ export class NotAcceptedException extends Exception {}
  * html response but server can send only json.
  */
 export class NotAcceptableException extends Exception {}
-
-/**
- * The exception that is thrown if there is problem with database eg. connection loss
- */
-export class OrmException extends Exception {
-  private _driverException: mysql.MysqlError;
-
-  get DriverException() {
-    return this._driverException;
-  }
-
-  constructor(message: string, driverException?: mysql.MysqlError) {
-    super(message);
-
-    this._driverException = driverException;
-  }
-
-  toString() {
-    let message = [this.message];
-
-    if (this._driverException) {
-      message.push(this._driverException.message);
-      message.push(`SQL QUERY: ${this._driverException.sql}`);
-    }
-
-    return message.join('\n');
-  }
-}
+ 
