@@ -96,7 +96,8 @@ interface IInjectable {
 }
 
 /**
- * Sets dependency injection guidelines - what to inject for specified class
+ * Sets dependency injection guidelines - what to inject for specified class. If multiple instances are registered at specified type,
+ * only first one is resolved and injected
  * @param args - what to inject - class definitions
  * @example
  * ```javascript
@@ -134,6 +135,27 @@ export function Inject(...args: Array<ServiceIdentifier | AbstractServiceIdentif
   };
 }
 
+
+/**
+ * Sets dependency injection guidelines - what to inject for specified class. If multiple instances are registered at specified type,
+ * all of them are resolved and injected
+ * @param args - what to inject - class definitions
+ * @example
+ * ```javascript
+ *
+ * @InjectAll(Bar)
+ * class Foo{
+ *
+ *  barInstances : Bar[];
+ *
+ *  constructor(bars : Bar[]){
+ *      // all Bar implementations are injected when Foo is created via DI container
+ *      this.barInstances = bar;
+ *  }
+ * }
+ *
+ * ```
+ */
 export function InjectAll(...args: Array<ServiceIdentifier | AbstractServiceIdentifier>) {
   return (target: any) => {
     _initializeDi(target);
@@ -150,6 +172,8 @@ export function InjectAll(...args: Array<ServiceIdentifier | AbstractServiceIden
 
 /**
  * Automatically injects dependency based on reflected property type. Uses experimental typescript reflection api
+ * If multiple implementations are registered, only first one is resolved
+ * 
  * @param target
  * @param key
  * @example
@@ -166,7 +190,7 @@ export function InjectAll(...args: Array<ServiceIdentifier | AbstractServiceIden
  *  someFunc(){
  *
  *    // automatically injected dependency is avaible now
- *    this._barInstance.doSmth();
+ *    this.barInstance.doSmth();
  *  }
  * }
  *
@@ -184,6 +208,34 @@ export function Autoinject(target: any, key: string | symbol) {
   });
 }
 
+/**
+ * Automatically injects dependency based on reflected property type. Uses experimental typescript reflection api
+ * If multiple implementations are registered, all of them is resolved
+ * 
+ * @param target
+ * @param key
+ * @example
+ * ```javascript
+ * class Foo{
+ *
+ *  @AutoinjectAll
+ *  barInstances : Bar[];
+ *
+ *  constructor(){
+ *      // ....
+ *  }
+ *
+ *  someFunc(){
+ *
+ *    // automatically injected dependency is avaible now
+ *    for(cons impl of this.barInstances){
+ *      impl.doSmth();
+ *    }
+ *  }
+ * }
+ *
+ * ```
+ */
 export function AutoinjectAll(target: any, key: string | symbol) {
   _initializeDi(target.constructor);
 
