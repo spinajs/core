@@ -3,7 +3,7 @@ import 'mocha';
 import * as chai from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
 
-import { Autoinject, Container, DI, Inject, NewInstance, PerChildInstance, Singleton , LazyInject, AutoinjectAll} from './../../src/system/di';
+import { Autoinject, Container, DI, Inject, NewInstance, PerChildInstance, Singleton , LazyInject} from './../../src/system/di';
 
 import { ModuleBase } from '../../src/system/module';
 import { ArgumentException } from './../../src/system/exceptions';
