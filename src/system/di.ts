@@ -503,11 +503,12 @@ export class Container {
     const targets = this.registry.has(type as ServiceIdentifier) ? this.registry.get(type as ServiceIdentifier) : [type];
 
     for (const target of targets) {
+      let instance = null;
       /**
        * Double cast to remove typescript errors, we are sure that needed properties are in class definition
        */
       const descriptor = (
-        ((target as any)[DI_DESCRIPTION_SYMBOL] || (((target as any).prototype)[DI_DESCRIPTION_SYMBOL]) || { inject: [], resolver: ResolveType.Singleton })
+        ((target as any)[DI_DESCRIPTION_SYMBOL] || (target.prototype && (((target as any).prototype)[DI_DESCRIPTION_SYMBOL])) || { inject: [], resolver: ResolveType.Singleton })
       ) as IInjectDescriptor;
 
       const toInject: IResolvedInjection[] = await Promise.all(
@@ -520,22 +521,26 @@ export class Container {
         }),
       );
 
-
+      const cacheKey = _.isFunction(target) ? type : target;
       switch (descriptor.resolver) {
         case ResolveType.NewInstance:
-          instances.push(await _getNewInstance(target, toInject));
+          instance = await _getNewInstance(target, toInject);
           break;
         case ResolveType.Singleton:
-          instances.push(_getCachedInstance(type, true) || (await _getNewInstance(target, toInject)));
+          instance = _getCachedInstance(cacheKey, true) || (await _getNewInstance(target, toInject));
           break;
         case ResolveType.PerChildContainer:
-          instances.push(_getCachedInstance(type, false) || (await _getNewInstance(target, toInject)));
+          instance = _getCachedInstance(cacheKey, false) || (await _getNewInstance(target, toInject));
           break;
       }
 
       if (descriptor.resolver === ResolveType.PerChildContainer || descriptor.resolver === ResolveType.Singleton) {
-        self.cache.set(type.name, instances);
+        if (!self.cache.has(cacheKey.name)) {
+          self.cache.set(cacheKey.name, instance);
+        }
       }
+
+      instances.push(instance);
     }
 
     return instances;
