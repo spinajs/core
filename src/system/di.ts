@@ -351,12 +351,16 @@ export class Container {
   /**
    * Returns container cache - map object with resolved classes as singletons
    */
-  get Cache() {
+  public get Cache() {
     return this.cache;
   }
 
-  get ResolveStrategies(): IResolveStrategy[] {
+  public get ResolveStrategies(): IResolveStrategy[] {
     return this.strategies;
+  }
+
+  public get Registry() : Map<ServiceIdentifier | AbstractServiceIdentifier, any[]>{
+    return this.registry;
   }
 
   constructor(parent?: Container) {
@@ -368,15 +372,6 @@ export class Container {
     }
 
     this.parent = parent;
-  }
-
-  /**
-   * Adds resolve strategy to container.
-   *
-   * @param strategy - strategy to add
-   */
-  public addStrategy(strategy: IResolveStrategy) {
-    this.strategies.push(strategy);
   }
 
   /**
@@ -588,7 +583,7 @@ export namespace DI {
   export const RootContainer = new Container();
 
   // add modules resolve strategy to proper init
-  RootContainer.addStrategy(new FrameworkModuleResolveStrategy());
+  RootContainer.ResolveStrategies.push(new FrameworkModuleResolveStrategy());
 
   /**
    * Clears root container registry and cache.
