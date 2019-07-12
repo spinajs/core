@@ -122,17 +122,16 @@ interface IInjectable {
  * ```
  */
 export function Inject(...args: Array<ServiceIdentifier | AbstractServiceIdentifier>) {
-  return (target: any) => {
-    _initializeDi(target);
+  return injectable((descriptor: IInjectDescriptor) => {
     for (const a of args) {
-      target[DI_DESCRIPTION_SYMBOL]._di.inject.push({
+      descriptor.inject.push({
         all: false,
         autoinject: false,
         autoinjectKey: '',
-        inject: a,
+        inject: a as any,
       });
     }
-  };
+  });
 }
 
 
@@ -157,22 +156,21 @@ export function Inject(...args: Array<ServiceIdentifier | AbstractServiceIdentif
  * ```
  */
 export function InjectAll(...args: Array<ServiceIdentifier | AbstractServiceIdentifier>) {
-  return (target: any) => {
-    _initializeDi(target);
+  return injectable((descriptor: IInjectDescriptor) => {
     for (const a of args) {
-      target[DI_DESCRIPTION_SYMBOL]._di.inject.push({
+      descriptor.inject.push({
         all: true,
         autoinject: false,
         autoinjectKey: '',
-        inject: a,
+        inject: a as any,
       });
     }
-  };
+  });
 }
 
 /**
  * Automatically injects dependency based on reflected property type. Uses experimental typescript reflection api
- * If multiple implementations are registered, only first one is resolved
+ * If decorator is applied to array property all registered type instances are injected, otherwise only first / only that exists
  * 
  * @param target
  * @param key
@@ -196,57 +194,24 @@ export function InjectAll(...args: Array<ServiceIdentifier | AbstractServiceIden
  *
  * ```
  */
-export function Autoinject(target: any, key: string | symbol) {
-  _initializeDi(target.constructor);
+export function Autoinject(injectType?: ServiceIdentifier | AbstractServiceIdentifier) {
+  return injectable((descriptor: IInjectDescriptor, target: any, propertyKey: string) => {
+    const type = Reflect.getMetadata('design:type', target, propertyKey);
+    const isArray = type.name === 'Array';
 
-  const type = Reflect.getMetadata('design:type', target, key);
-  target.constructor[DI_DESCRIPTION_SYMBOL]._di.inject.push({
-    all: false,
-    autoinject: true,
-    autoinjectKey: key,
-    inject: type,
+    if (type.name === 'Array' && !injectType) {
+      throw new Error("you must provide inject type when injecting array");
+    }
+
+    descriptor.inject.push({
+      all: isArray ? true : false,
+      autoinject: true,
+      autoinjectKey: propertyKey,
+      inject: isArray ? injectType : type,
+    })
   });
 }
 
-/**
- * Automatically injects dependency based on reflected property type. Uses experimental typescript reflection api
- * If multiple implementations are registered, all of them is resolved
- * 
- * @param target
- * @param key
- * @example
- * ```javascript
- * class Foo{
- *
- *  @AutoinjectAll
- *  barInstances : Bar[];
- *
- *  constructor(){
- *      // ....
- *  }
- *
- *  someFunc(){
- *
- *    // automatically injected dependency is avaible now
- *    for(cons impl of this.barInstances){
- *      impl.doSmth();
- *    }
- *  }
- * }
- *
- * ```
- */
-export function AutoinjectAll(target: any, key: string | symbol) {
-  _initializeDi(target.constructor);
-
-  const type = Reflect.getMetadata('design:type', target, key);
-  target.constructor[DI_DESCRIPTION_SYMBOL]._di.inject.push({
-    all : true,
-    autoinject: true,
-    autoinjectKey: key,
-    inject: type,
-  });
-}
 
 /**
  * Lazy injects service to object. Use only with class properties
@@ -294,29 +259,25 @@ export function LazyInject(service: ServiceIdentifier | string) {
  * Per child instance injection decorator - object is resolved once per container - child containers have own instances.
  */
 export function PerChildInstance() {
-  return (target: any) => {
-    _initializeDi(target);
-    target[DI_DESCRIPTION_SYMBOL]._di.resolver = ResolveType.PerChildContainer;
-  };
+  return injectable((descriptor: IInjectDescriptor) => {
+    descriptor.resolver = ResolveType.PerChildContainer;
+  });
 }
 
 /**
  * NewInstance injection decorator - every time class is injected - its created from scratch
  */
 export function NewInstance() {
-  return (target: any) => {
-    _initializeDi(target);
-    target[DI_DESCRIPTION_SYMBOL]._di.resolver = ResolveType.NewInstance;
-  };
+  return injectable((descriptor: IInjectDescriptor) => {
+    descriptor.resolver = ResolveType.NewInstance;
+  });
 }
 
 /**
  * Singleton injection decorator - every time class is resolved - its created only once globally ( even in child DI containers )
  */
 export function Singleton() {
-  return (target: any) => {
-    _initializeDi(target);
-  };
+  return injectable();
 }
 
 /**
@@ -349,19 +310,21 @@ export class FrameworkModuleResolveStrategy implements IResolveStrategy {
   }
 }
 
-/**
- * Ensures that DI object is set for default values
- * @param target - target class definition
- * @hidden
- */
-function _initializeDi(target: any): void {
-  if (target[DI_DESCRIPTION_SYMBOL] === undefined) {
-    target[DI_DESCRIPTION_SYMBOL] = {
-      _di: {
+function injectable(callback?: (descriptor: IInjectDescriptor, target: ArrayBuffer, propertyKey: string | symbol, indexOrDescriptor: number | PropertyDescriptor) => void): any {
+  return (target: any, propertyKey: string | symbol, indexOrDescriptor: number | PropertyDescriptor) => {
+    let descriptor: IInjectDescriptor = target[DI_DESCRIPTION_SYMBOL];
+    if (!descriptor) {
+      descriptor = {
         inject: [],
-        resolver: ResolveType.Singleton,
-      },
-    };
+        resolver: ResolveType.Singleton
+      };
+
+      target[DI_DESCRIPTION_SYMBOL] = descriptor;
+    }
+
+    if (callback) {
+      callback(descriptor, target, propertyKey, indexOrDescriptor);
+    }
   }
 }
 
@@ -380,7 +343,7 @@ export class Container {
    * Singletons cache, objects that should be created only once are stored here.
    * @access private
    */
-  private cache: Map<string, any>;
+  private cache: Map<string, any[]>;
 
   /**
    * Resolve strategy array.
@@ -405,7 +368,7 @@ export class Container {
 
   constructor(parent?: Container) {
     this.registry = new Map<ServiceIdentifier | AbstractServiceIdentifier, any[]>();
-    this.cache = new Map<string, any>();
+    this.cache = new Map<string, any[]>();
 
     if (parent) {
       this.strategies = parent.ResolveStrategies.slice(0);
@@ -531,48 +494,51 @@ export class Container {
    */
   public async resolveAll<T>(type: ServiceIdentifier | ServiceFactory | AbstractServiceIdentifier, options?: any[]): Promise<T[]> {
     const self = this;
+    const instances: any[] = [];
 
     if (_.isNil(type)) {
       throw new ArgumentException('argument `type` cannot be null or undefined');
     }
 
-    const target = this.registry.has(type as ServiceIdentifier) ? this.registry.get(type as ServiceIdentifier) : type;
+    const targets = this.registry.has(type as ServiceIdentifier) ? this.registry.get(type as ServiceIdentifier) : [type];
 
-    /**
-     * Double cast to remove typescript errors, we are sure that needed properties are in class definition
-     */
-    const descriptor = (
-      ((target as any)[DI_DESCRIPTION_SYMBOL] || { _di: { inject: [], resolver: ResolveType.Singleton } })
-    ) as IInjectable;
+    for (const target of targets) {
+      /**
+       * Double cast to remove typescript errors, we are sure that needed properties are in class definition
+       */
+      const descriptor = (
+        ((target as any)[DI_DESCRIPTION_SYMBOL] || (((target as any).prototype)[DI_DESCRIPTION_SYMBOL]) || { inject: [], resolver: ResolveType.Singleton })
+      ) as IInjectDescriptor;
 
-    const toInject: IResolvedInjection[] = await Promise.all(
-      descriptor._di.inject.map(async t => {
-        return {
-          autoinject: t.autoinject,
-          autoinjectKey: t.autoinjectKey,
-          instance: (t.all)? await this.resolveAll(t.inject) : await this.resolve(t.inject),
-        };
-      }),
-    );
+      const toInject: IResolvedInjection[] = await Promise.all(
+        descriptor.inject.map(async t => {
+          return {
+            autoinject: t.autoinject,
+            autoinjectKey: t.autoinjectKey,
+            instance: (t.all) ? await this.resolveAll(t.inject) : await this.resolve(t.inject),
+          };
+        }),
+      );
 
-    let instance: any[] = null;
-    switch (descriptor._di.resolver) {
-      case ResolveType.NewInstance:
-        instance = await _getNewInstance(target, toInject);
-        break;
-      case ResolveType.Singleton:
-        instance = _getCachedInstance(type, true) || (await _getNewInstance(target, toInject));
-        break;
-      case ResolveType.PerChildContainer:
-        instance = _getCachedInstance(type, false) || (await _getNewInstance(target, toInject));
-        break;
+
+      switch (descriptor.resolver) {
+        case ResolveType.NewInstance:
+          instances.push(await _getNewInstance(target, toInject));
+          break;
+        case ResolveType.Singleton:
+          instances.push(_getCachedInstance(type, true) || (await _getNewInstance(target, toInject)));
+          break;
+        case ResolveType.PerChildContainer:
+          instances.push(_getCachedInstance(type, false) || (await _getNewInstance(target, toInject)));
+          break;
+      }
+
+      if (descriptor.resolver === ResolveType.PerChildContainer || descriptor.resolver === ResolveType.Singleton) {
+        self.cache.set(type.name, instances);
+      }
     }
 
-    if (descriptor._di.resolver === ResolveType.PerChildContainer || descriptor._di.resolver === ResolveType.Singleton) {
-      self.cache.set(type.name, instance);
-    }
-
-    return instance.length > 1 ? instance[0] : null;
+    return instances;
 
     function _getCachedInstance(e: any, parent: boolean): any {
       if (self.has(e.name, parent)) {
@@ -582,43 +548,36 @@ export class Container {
       return null;
     }
 
-    async function _getNewInstance(e: any, a?: IResolvedInjection[]): Promise<any[]> {
+    async function _getNewInstance(typeToCreate: any, a?: IResolvedInjection[]): Promise<any[]> {
       let args: any[] = [null];
+      let newInstance: any = null;
 
-      return Promise.all(e.map(_createInstance));
-
-      async function _createInstance(typeToCreate: any) {
-
-        let newInstance: any = null;
-
-        /**
-         * If type is not Constructable, we assume its factory function,
-         * just call it with `this` container.
-         */
-        if (!_.isConstructor(typeToCreate) && _.isFunction(typeToCreate)) {
-          newInstance = (typeToCreate as ServiceFactory)(self, ...[].concat(options));
-        }
-        else {
-          if (_.isArray(a)) {
-            args = args.concat(a.filter(i => !i.autoinject).map(i => i.instance));
-          }
-
-          if (!_.isEmpty(options)) {
-            args = args.concat(options);
-          }
-
-          newInstance = new (Function.prototype.bind.apply(typeToCreate, args))();
-
-          for (const ai of a.filter(i => i.autoinject)) {
-            newInstance[ai.autoinjectKey] = ai.instance;
-          }
-
-          await Promise.all(self.strategies.map(s => s.resolve(newInstance, self)));
+      /**
+       * If type is not Constructable, we assume its factory function,
+       * just call it with `this` container.
+       */
+      if (!_.isConstructor(typeToCreate) && _.isFunction(typeToCreate)) {
+        newInstance = (typeToCreate as ServiceFactory)(self, ...[].concat(options));
+      }
+      else {
+        if (_.isArray(a)) {
+          args = args.concat(a.filter(i => !i.autoinject).map(i => i.instance));
         }
 
-        return newInstance;
+        if (!_.isEmpty(options)) {
+          args = args.concat(options);
+        }
+
+        newInstance = new (Function.prototype.bind.apply(typeToCreate, args))();
+
+        for (const ai of a.filter(i => i.autoinject)) {
+          newInstance[ai.autoinjectKey] = ai.instance;
+        }
+
+        await Promise.all(self.strategies.map(s => s.resolve(newInstance, self)));
       }
 
+      return newInstance;
     }
   }
 }

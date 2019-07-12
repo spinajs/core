@@ -3,7 +3,7 @@ import 'mocha';
 import * as chai from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
 
-import { Autoinject, Container, DI, Inject, NewInstance, PerChildInstance, Singleton , LazyInject} from './../../src/system/di';
+import { Autoinject, Container, DI, Inject, NewInstance, PerChildInstance, Singleton , LazyInject, AutoinjectAll} from './../../src/system/di';
 
 import { ModuleBase } from '../../src/system/module';
 import { ArgumentException } from './../../src/system/exceptions';
@@ -76,7 +76,7 @@ class AutoinjectBar
 
 class AutoinjectClass {
 
-    @Autoinject
+    @Autoinject()
     // @ts-ignore
     public Test: AutoinjectBar = null;
 }
@@ -121,6 +121,13 @@ class SampleImplementation2 extends SampleBaseClass{
     }
 }
 
+class SampleMultipleAutoinject{
+
+    @Autoinject(SampleBaseClass)
+    public Instances : SampleBaseClass[];
+
+
+}
 
 describe("Dependency injection", () => {
     beforeEach(() => {
@@ -131,7 +138,14 @@ describe("Dependency injection", () => {
         DI.register(SampleImplementation1).as(SampleBaseClass);
         DI.register(SampleImplementation2).as(SampleBaseClass);
 
-        const result = DI.resolve();
+        const val = await DI.resolve<SampleMultipleAutoinject>(SampleMultipleAutoinject);
+        expect(val).to.be.not.null;
+        expect(val.Instances).to.be.not.null;
+        expect(val.Instances.length).to.eq(2);
+        expect(val.Instances[0] instanceof SampleBaseClass).to.be.true;
+        expect(val.Instances[1] instanceof SampleBaseClass).to.be.true;
+
+
     });
 
     it("Module creation", async () => {
