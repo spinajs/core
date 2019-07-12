@@ -4,7 +4,7 @@ import * as chai from 'chai';
 import * as _ from 'lodash';
 
 import { Configuration } from '../../src/system/configuration';
-import { Controllers } from '../../src/system/controllers';
+import { ControllersModule } from '../../src/system/controllers';
 import { DI } from '../../src/system/di';
 import { HttpServer } from '../../src/system/http';
 import { LogModule } from '../../src/system/log';
@@ -16,7 +16,7 @@ import chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 
 function ctr() {
-    return DI.resolve<Controllers>(Controllers);
+    return DI.resolve<ControllersModule>(ControllersModule);
 }
 
 function srv() {

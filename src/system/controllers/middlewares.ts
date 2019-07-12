@@ -1,8 +1,8 @@
 import * as express from 'express';
-import { BaseController } from './controllers';
+import { BaseController } from '.';
 import { IRoute } from "./routes";
 
-export type NewableMiddleware = new (...args: any[]) => IMiddleware;
+export type NewableMiddleware = new (...args: any[]) => BaseMiddleware;
 
 export interface IMiddleware {
 

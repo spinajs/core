@@ -1,40 +1,41 @@
-import { BaseController, BasePath, Get, Post, Body, Policy, IMiddleware, RouteDefinition, PolicyBase, Params } from '../../../../src/system/controllers';
+import { BaseController, BasePath, Get, Post, Body, Policy, Controller, Middleware, Param } from '../../../../src/system/controllers';
 import { Request } from "express";
 import { NewInstance } from '../../../../src/system/di';
 import { ok } from '../../../../src/responses';
+import { BaseMiddleware } from '../../../../src/system/controllers/middlewares';
+import { BasePolicy } from '../../../../src/system/controllers/policies';
 
 export class SampleBodyParameter {
-    name: string;
-    index: number;
+    public name: string;
+    public index: number;
 }
 
 @NewInstance()
-export class TestPolicy extends PolicyBase {
-    isEnabled(_action: any): boolean {
+export class TestPolicy extends BasePolicy {
+    public isEnabled(): boolean {
         return true;
     }
 
-    async execute(_req: Request): Promise<boolean> {
+    public async execute(): Promise<boolean> {
         return true;
     }
 }
 
-export class TestMiddleware2 implements IMiddleware {
-    isEnabled(_action: RouteDefinition): boolean {
+export class TestMiddleware2 extends BaseMiddleware {
+    public isEnabled(): boolean {
         return true;
     }
 
-    async onBeforeAction(_req: Request): Promise<any> {
+    public async onBeforeAction(): Promise<any> {
         return "before";
     }
 
-    async onAfterAction(_req: Request): Promise<any> {
+    public async onAfterAction(): Promise<any> {
         return "after";
 
     }
-
-
 }
+ 
 
 @BasePath("Test2")
 @Policy(TestPolicy)
@@ -51,18 +52,17 @@ export class Test2Controller extends BaseController {
     }
 
     @Get("with/route/and/param/:id")
-    public async withRouteAndParamsDecorator(@Params("id") _id: number) {
-        return ok();
+    public async withRouteAndParamsDecorator(@Param() id: number) {
+        return ok({
+            id
+        });
     }
 
     @Post("with/route/and/param/from/post")
-    public async withRouteAndPostParamDecorator(@Body() _testData: SampleBodyParameter) {
-    }
-
-    @Get()
-    @Middleware(TestMiddleware2)
-    public async customMiddlewareRoute() {
-
+    public async withRouteAndPostParamDecorator(@Body() testData: SampleBodyParameter) {
+        return ok({
+            testData
+        })
     }
 }
 

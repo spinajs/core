@@ -67,9 +67,6 @@ class Zar {
 // @ts-ignore
 class TestModule extends ModuleBase {
 
-    public async initialize() {
-        return true;
-    }
 }
 
 class AutoinjectBar
@@ -102,11 +99,40 @@ class LazyInjectResolve
     public Instance : LazyInjectDep;
 }
 
+abstract class SampleBaseClass
+{
+    public Name : string;
+}
+
+class SampleImplementation1 extends SampleBaseClass{
+
+    constructor(){
+        super();
+
+        this.Name = "Sample1";
+    }
+}
+
+class SampleImplementation2 extends SampleBaseClass{
+    constructor(){
+        super();
+
+        this.Name = "Sample2";
+    }
+}
+
 
 describe("Dependency injection", () => {
     beforeEach(() => {
         DI.clear();
     })
+
+    it("Register multiple classes with same base class", async () =>{
+        DI.register(SampleImplementation1).as(SampleBaseClass);
+        DI.register(SampleImplementation2).as(SampleBaseClass);
+
+        const result = DI.resolve();
+    });
 
     it("Module creation", async () => {
         expect(await DI.resolve<TestModule>(TestModule)).to.be.not.null;

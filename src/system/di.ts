@@ -48,6 +48,8 @@ export type AbstractServiceIdentifier = Function & { prototype: any };
  */
 export type ServiceFactory = (container: Container, ...args: any[]) => any;
 
+export type ServiceArray = AbstractServiceIdentifier[] | ServiceIdentifier[];
+
 /**
  * Interface to describe DI binding behaviour
  */
@@ -76,6 +78,7 @@ interface IInjectDescriptor {
 interface IToInject {
   inject: ServiceIdentifier;
   autoinject: boolean;
+  all: boolean;
   autoinjectKey: string;
 }
 
@@ -122,6 +125,21 @@ export function Inject(...args: Array<ServiceIdentifier | AbstractServiceIdentif
     _initializeDi(target);
     for (const a of args) {
       target[DI_DESCRIPTION_SYMBOL]._di.inject.push({
+        all: false,
+        autoinject: false,
+        autoinjectKey: '',
+        inject: a,
+      });
+    }
+  };
+}
+
+export function InjectAll(...args: Array<ServiceIdentifier | AbstractServiceIdentifier>) {
+  return (target: any) => {
+    _initializeDi(target);
+    for (const a of args) {
+      target[DI_DESCRIPTION_SYMBOL]._di.inject.push({
+        all: true,
         autoinject: false,
         autoinjectKey: '',
         inject: a,
@@ -159,6 +177,19 @@ export function Autoinject(target: any, key: string | symbol) {
 
   const type = Reflect.getMetadata('design:type', target, key);
   target.constructor[DI_DESCRIPTION_SYMBOL]._di.inject.push({
+    all: false,
+    autoinject: true,
+    autoinjectKey: key,
+    inject: type,
+  });
+}
+
+export function AutoinjectAll(target: any, key: string | symbol) {
+  _initializeDi(target.constructor);
+
+  const type = Reflect.getMetadata('design:type', target, key);
+  target.constructor[DI_DESCRIPTION_SYMBOL]._di.inject.push({
+    all : true,
     autoinject: true,
     autoinjectKey: key,
     inject: type,
@@ -191,7 +222,7 @@ export function LazyInject(service: ServiceIdentifier | string) {
   return (target?: any, key?: string) => {
     // property getter
     const getter = () => {
-      if (typeof  service === "string") {
+      if (typeof service === "string") {
         return DI.get<any>(service);
       } else {
         return DI.resolve<any>(service);
@@ -291,7 +322,7 @@ export class Container {
    * eg. that class IConfiguration should be resolved as DatabaseConfiguration etc.
    * @access private
    */
-  private registry: Map<ServiceIdentifier | AbstractServiceIdentifier, ServiceIdentifier | ServiceFactory>;
+  private registry: Map<ServiceIdentifier | AbstractServiceIdentifier, any[]>;
 
   /**
    * Singletons cache, objects that should be created only once are stored here.
@@ -321,7 +352,7 @@ export class Container {
   }
 
   constructor(parent?: Container) {
-    this.registry = new Map<ServiceIdentifier | AbstractServiceIdentifier, ServiceIdentifier>();
+    this.registry = new Map<ServiceIdentifier | AbstractServiceIdentifier, any[]>();
     this.cache = new Map<string, any>();
 
     if (parent) {
@@ -362,11 +393,23 @@ export class Container {
 
     return {
       as: (type: ServiceIdentifier | AbstractServiceIdentifier) => {
-        self.registry.set(type, implementation);
+        if (self.registry.has(type)) {
+          (self.registry.get(type) as any[]).push(implementation);
+        } else {
+
+          const arr: any[] = [];
+          arr.push(implementation);
+
+          self.registry.set(type, arr);
+        }
       },
       asSelf: () => {
-        self.registry.set(implementation, implementation);
-      },
+        const arr: any[] = [];
+        arr.push(implementation);
+
+        self.registry.set(implementation, arr);
+        return this;
+      }
     };
   }
 
@@ -422,6 +465,10 @@ export class Container {
     return false;
   }
 
+  public async resolve<T>(type: ServiceIdentifier | ServiceFactory | AbstractServiceIdentifier, options?: any[]): Promise<T> {
+    return (await this.resolveAll<T>(type, options))[0];
+  }
+
   /**
    * Resolves specified type.
    *
@@ -430,10 +477,7 @@ export class Container {
    * @return - class instance
    * @throws { ArgumentException } if type is null or undefined
    */
-  public async resolve<T>(
-    type: ServiceIdentifier | ServiceFactory | AbstractServiceIdentifier,
-    options?: any[],
-  ): Promise<T> {
+  public async resolveAll<T>(type: ServiceIdentifier | ServiceFactory | AbstractServiceIdentifier, options?: any[]): Promise<T[]> {
     const self = this;
 
     if (_.isNil(type)) {
@@ -454,15 +498,15 @@ export class Container {
         return {
           autoinject: t.autoinject,
           autoinjectKey: t.autoinjectKey,
-          instance: await this.resolve(t.inject),
+          instance: (t.all)? await this.resolveAll(t.inject) : await this.resolve(t.inject),
         };
       }),
     );
 
-    let instance = null;
+    let instance: any[] = null;
     switch (descriptor._di.resolver) {
       case ResolveType.NewInstance:
-        instance = _getNewInstance(target, toInject);
+        instance = await _getNewInstance(target, toInject);
         break;
       case ResolveType.Singleton:
         instance = _getCachedInstance(type, true) || (await _getNewInstance(target, toInject));
@@ -472,7 +516,11 @@ export class Container {
         break;
     }
 
-    return instance;
+    if (descriptor._di.resolver === ResolveType.PerChildContainer || descriptor._di.resolver === ResolveType.Singleton) {
+      self.cache.set(type.name, instance);
+    }
+
+    return instance.length > 1 ? instance[0] : null;
 
     function _getCachedInstance(e: any, parent: boolean): any {
       if (self.has(e.name, parent)) {
@@ -482,36 +530,43 @@ export class Container {
       return null;
     }
 
-    async function _getNewInstance(e: any, a?: IResolvedInjection[]): Promise<any> {
+    async function _getNewInstance(e: any, a?: IResolvedInjection[]): Promise<any[]> {
       let args: any[] = [null];
-      let newInstance: any = null;
 
-      /**
-       * If type is not Constructable, we assume its factory function,
-       * just call it with `this` container.
-       */
-      if (!_.isConstructor(e) && _.isFunction(e)) {
-        newInstance = (e as ServiceFactory)(self, ...[].concat(options));
-      } else {
-        if (_.isArray(a)) {
-          args = args.concat(a.filter(i => !i.autoinject).map(i => i.instance));
+      return Promise.all(e.map(_createInstance));
+
+      async function _createInstance(typeToCreate: any) {
+
+        let newInstance: any = null;
+
+        /**
+         * If type is not Constructable, we assume its factory function,
+         * just call it with `this` container.
+         */
+        if (!_.isConstructor(typeToCreate) && _.isFunction(typeToCreate)) {
+          newInstance = (typeToCreate as ServiceFactory)(self, ...[].concat(options));
+        }
+        else {
+          if (_.isArray(a)) {
+            args = args.concat(a.filter(i => !i.autoinject).map(i => i.instance));
+          }
+
+          if (!_.isEmpty(options)) {
+            args = args.concat(options);
+          }
+
+          newInstance = new (Function.prototype.bind.apply(typeToCreate, args))();
+
+          for (const ai of a.filter(i => i.autoinject)) {
+            newInstance[ai.autoinjectKey] = ai.instance;
+          }
+
+          await Promise.all(self.strategies.map(s => s.resolve(newInstance, self)));
         }
 
-        if (!_.isEmpty(options)) {
-          args = args.concat(options);
-        }
-
-        newInstance = new (Function.prototype.bind.apply(e, args))();
-
-        for (const ai of a.filter(i => i.autoinject)) {
-          newInstance[ai.autoinjectKey] = ai.instance;
-        }
-
-        await Promise.all(self.strategies.map(s => s.resolve(newInstance, self)));
+        return newInstance;
       }
 
-      self.cache.set(type.name, newInstance);
-      return newInstance;
     }
   }
 }
@@ -550,7 +605,7 @@ export namespace DI {
    * @return - class instance
    * @throws { ArgumentException } if type is null or undefined
    */
-  export async function resolve<T>(type: ServiceIdentifier | AbstractServiceIdentifier, options?: any[]): Promise<T> {
+  export async function resolve<T>(type: ServiceIdentifier | ServiceFactory | AbstractServiceIdentifier, options?: any[]): Promise<T> {
     return RootContainer.resolve<T>(type, options);
   }
 

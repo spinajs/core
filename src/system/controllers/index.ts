@@ -1,13 +1,13 @@
-import { TypescriptCompiler } from './../reflection';
-import { ValidationException, ServerErrorException } from './../exceptions';
+import * as express from "express";
+import { TypescriptCompiler, FromFiles, ClassInfo } from '../reflection';
+import { ValidationException, ServerErrorException } from '../exceptions';
 import { IMiddleware, NewableMiddleware, BaseMiddleware } from "./middlewares";
 import { IPolicy, NewablePolicy } from "./policies";
 import { IRoute, RouteType, IRouteParameter, ParameterType } from "./routes";
 import { ModuleBase } from "../module";
-import { FromFiles, ClassInfo, Autoinject, Configuration, HttpServer } from "..";
+import { Autoinject } from "../di";
+import { HttpServer } from "../http";
 import { Schema } from "../schema";
-import { IOException } from '../exceptions';
-import express = require("express");
 import { RequestHandler } from "express-serve-static-core";
 import { DI } from "../di";
 
@@ -24,22 +24,22 @@ export interface IControllerMetadata {
 }
 
 
-export function Controller(callback: (controller: IControllerMetadata, target: any, propertyKey: symbol | string, indexOrDescriptor: number | PropertyDescriptor) => void) {
+export function Controller(callback: (controller: IControllerMetadata, target: any, propertyKey: symbol | string, indexOrDescriptor: number | PropertyDescriptor) => void): any {
     return (target: any, propertyKey: string | symbol, indexOrDescriptor: number | PropertyDescriptor) => {
-        const metadata: IControllerMetadata = Reflect.getMetadata(ControllerKey, target) ||
-            {
+        let metadata: IControllerMetadata = Reflect.getMetadata(ControllerKey, target.prototype || target);
+        if (!metadata) {
+            metadata = {
                 BasePath: null,
                 Middlewares: [],
                 Policies: [],
                 Routes: new Map<string, IRoute>()
             };
 
-        if (!metadata) {
-            Reflect.defineMetadata(ControllerKey, metadata, target);
+            Reflect.defineMetadata(ControllerKey, metadata, target.prototype || target);
         }
 
         if (callback) {
-            callback(metadata, target, propertyKey, indexOrDescriptor)
+            callback(metadata, target.prototype || target, propertyKey, indexOrDescriptor)
         }
     }
 }
@@ -76,7 +76,7 @@ function Parameter(type: ParameterType, schema: any) {
         const param: IRouteParameter = {
             Index: index,
             Name: "",
-            RuntimeType: Reflect.getMetadata("design:paramtypes", target, propertyKey)[index],
+            RuntimeType: Reflect.getMetadata("design:paramtypes", target.prototype || target, propertyKey)[index],
             Schema: schema,
             Type: type,
         };
@@ -122,7 +122,6 @@ export function BasePath(path: string) {
         metadata.BasePath = path;
     });
 }
-
 
 /**
  * Route parameter taken from query string eg. route?id=1

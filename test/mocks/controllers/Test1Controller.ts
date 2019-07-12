@@ -1,17 +1,18 @@
-import { BaseController, Get,  Post,  IMiddleware, Del, Put, Patch, Head, File, RouteDefinition } from '../../../src/system/controllers';
+import { BaseController, Get,  Post, Del, Put, Patch, Head, File, Middleware } from '../../../src/system/controllers';
 import {Request } from "express";
 import { NewInstance } from '../../../src/system/di';
+import { BaseMiddleware } from '../../../src/system/controllers/middlewares';
 
 @NewInstance()
-class TestMiddleware implements IMiddleware
+class TestMiddleware extends BaseMiddleware
 {
-    isEnabled(_action: RouteDefinition): boolean {
+    public isEnabled(): boolean {
          return true;
     }    
     
-    async onBeforeAction(_req: Request): Promise<any> {
+    public async onBeforeAction(_req: Request): Promise<any> {
     }
-    async onAfterAction(_req: Request): Promise<any> {
+    public async onAfterAction(_req: Request): Promise<any> {
     }
 }
  

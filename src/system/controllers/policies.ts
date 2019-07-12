@@ -1,8 +1,8 @@
 import * as express from "express";
-import { IControllerMetadata } from './controllers';
+import { IControllerMetadata } from '.';
 import { IRoute } from "./routes";
 
-export type NewablePolicy = new (...args: any[]) => IPolicy;
+export type NewablePolicy = new (...args: any[]) => BasePolicy;
 
 export interface IPolicy {
 

@@ -5,7 +5,8 @@ import * as path from 'path';
 import * as ts from "typescript";
 
 import { DI } from './di';
-import { ArgumentException, Configuration, IOException } from '.';
+import { ArgumentException, IOException } from './exceptions';
+import { Configuration } from "./configuration";
 
 /**
  * Class info structure
