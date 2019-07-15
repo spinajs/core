@@ -1,6 +1,4 @@
 import 'reflect-metadata';
-import { ServiceFactory } from './di';
-import { GlobalEvents } from './events';
 import { ArgumentException } from './exceptions';
 import _ from './lodash';
 import { ModuleBase } from './module';
@@ -292,11 +290,7 @@ export interface IResolveStrategy {
 export class FrameworkModuleResolveStrategy implements IResolveStrategy {
   public async resolve(target: any) {
     if (target instanceof ModuleBase) {
-      const ev = GlobalEvents;
-
-      ev.emit('beforeModuleInitialize', target);
       await target.initialize();
-      ev.emit('afterModuleInitialize', target);
     }
 
     return target;

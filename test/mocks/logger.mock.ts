@@ -1,9 +1,9 @@
-import { LogModule, ConsoleLogStream } from "../../src/system/log";
 import bunyan = require("bunyan");
- 
+import { ConsoleLogStream, LogModule } from "../../src/system/log";
+
 
 export class FakeLog extends LogModule {
-    _log = bunyan.createLogger({
+    private log = bunyan.createLogger({
         name: 'spine-framework',
         serializers: bunyan.stdSerializers,
         /**
@@ -11,25 +11,20 @@ export class FakeLog extends LogModule {
          */
         streams: [
             {
-                type: "raw",
-    
+                level: process.env.NODE_ENV === "development" ? "trace" : "info",
+
                 /**
                  * We use default console log stream with colors
                  */
                 stream: new ConsoleLogStream(),
-                level: process.env.NODE_ENV == "development" ? "trace" : "info"
+                type: "raw",
+
+
             }
         ]
     });
 
-       /**
-     * Initializes bunyan logger & hooks for process:uncaughtException to log fatal application events
-     */
-    public async initialize(): Promise<any> {
-        
-    }
-
-    getLogger() {
+    public getLogger() {
         return this._log;
     }
 }

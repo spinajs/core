@@ -8,7 +8,7 @@ import * as _ from 'lodash';
  *  _ is defined as  var _: _.LoDashStatic, and vars are not currently extendable.
  * Becouse of this we cannot use standard declaration merging in typescript.
  */
-interface SpineLodash extends _.LoDashStatic {
+interface ISpinajsLodash extends _.LoDashStatic {
   /**
    * Checks if value is constructable type.
    * Checks for [[Construct]] internal function in object.
@@ -34,6 +34,6 @@ function isConstructor(value: any) {
   return true;
 }
 
-_.mixin({ isConstructor: isConstructor });
+_.mixin({ isConstructor });
 
-export default <SpineLodash>_;
+export default _ as ISpinajsLodash;
