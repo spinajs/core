@@ -19,6 +19,9 @@
         "lib/**/*"
     ],
     "dependencies": {
+        "@spinajs/configuration": "^1.0.0",
+        "@spinajs/di": "^1.0.4",
+        "@spinajs/exceptions": "^1.0.0",
         "@types/events": "^3.0.0",
         "ajv": "^6.10.0",
         "body-parser": "^1.18.2",
