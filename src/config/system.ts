@@ -11,14 +11,19 @@ module.exports.system = {
   /**
    * Top level working directory
    */
-  appDir: __dirname,
+  frameworkDir: __dirname,
+
+  /**
+   * application top level directory, must be set by application that uses framework
+   */
+  appDir: "",
 
   /**
    * where to look at for different app modules
    */
   dirs: {
-    controllers: [dir('/../controllers')],
     channels: [dir('/../channels')],
+    controllers: [dir('/../controllers')],
     schemas: [dir('/../schemas')],
     responses: [dir('/../responses')],
     models: [dir('/../models')],
@@ -34,6 +39,7 @@ module.exports.system = {
     apps: [dir('./../apps')],
     views: [dir('./../views')],
     locales: [dir('./../locales')],
+    plop: [dir('./../code-generators/templates')]
   },
 
   /**

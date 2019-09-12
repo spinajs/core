@@ -1,11 +1,8 @@
-import {
-  FrameworkCliModule,
-  DI,
-  Configuration,
-  FrameworkConfiguration,
-  FrameworkLogModule,
-  LogModule,
-} from './../system';
+import { Configuration, FrameworkConfiguration } from "@spinajs/configuration";
+import { DI } from "@spinajs/di";
+
+
+import { FrameworkCliModule, FrameworkLogModule, LogModule } from './../system';
 
 async function bootstrap() {
   DI.register(FrameworkConfiguration).as(Configuration);
@@ -16,4 +13,5 @@ async function bootstrap() {
   await DI.resolve(FrameworkCliModule, [process.argv]);
 }
 
-bootstrap().then(() => {});
+// tslint:disable-next-line: no-empty
+bootstrap().then(() => { });

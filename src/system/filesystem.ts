@@ -1,9 +1,12 @@
 import * as fs from 'fs';
 import * as glob from 'glob';
 
+const fsPromises = fs.promises;
+
 /**
  * Helper function to deal with directories
  */
+// tslint:disable-next-line: no-namespace
 export namespace Directory {
   /**
    * Checks if directory exists at specified path
@@ -11,8 +14,8 @@ export namespace Directory {
    * @param path path to check
    * @returns { boolean } true if exists false otherwise
    */
-  export function exists(path: string): Promise<boolean> {
-    return File.exists(path);
+  export async function exists(path: string): Promise<boolean> {
+    return await File.exists(path);
   }
 
   /**
@@ -28,18 +31,25 @@ export namespace Directory {
   }
 }
 
+// tslint:disable-next-line: no-namespace
 export namespace File {
-  export function exists(path: string): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      fs.access(path, fs.constants.F_OK, err => {
-        if (err) {
-          reject(false);
-          return;
-        }
+  export async function exists(path: string): Promise<boolean> {
+    try {
+      await fsPromises.access(path, fs.constants.F_OK);
+      return true;
+    }
+    catch{
+      return false;
+    }
+  }
 
-        resolve(true);
-      });
-    });
+  export function existsSync(path: string) {
+    try {
+      fs.accessSync(path, fs.constants.F_OK);
+      return true;
+    } catch{
+      return false;
+    }
   }
 
   export function read(path: string): Promise<string> {
@@ -50,7 +60,7 @@ export namespace File {
           encoding: 'utf8',
           flag: 'r',
         },
-        function(error, data: string) {
+        function (error, data: string) {
           if (error) {
             reject(error);
           } else {
