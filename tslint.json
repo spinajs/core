@@ -1,8 +1,11 @@
 {
   "extends": [
-    "tslint-circular-dependencies","tslint:recommended", "tslint-config-prettier","tslint-no-unused-expression-chai"
+    "tslint-circular-dependencies",
+    "tslint:recommended",
+    "tslint-config-prettier",
+    "tslint-no-unused-expression-chai"
   ],
-  "rules":{
+  "rules": {
     "max-classes-per-file": {
       "severity": "off"
     },
@@ -14,6 +17,14 @@
     },
     "no-console": {
       "severity": "off"
+    },
+    "object-literal-sort-keys": {
+      "severity": "off"
+    },
+    "variable-name": {
+      "options": [
+        "allow-leading-underscore"
+      ]
     }
   }
 }

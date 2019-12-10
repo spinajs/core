@@ -1,10 +1,19 @@
-import { HTTP_STATUS_CODE, httpResponse } from '../system/http';
-import { ResponseFunction } from '../system/controllers';
+import * as express from 'express';
+import { HTTP_STATUS_CODE, httpResponse, Response, ResponseFunction } from '../system/http';
+
 /**
  * Internall response function.
  * Returns HTTP 404 NOT FOUND ERROR
  * @param err - error to send
  */
-export function notFound(err?: any): ResponseFunction {
-  return httpResponse(err, HTTP_STATUS_CODE.NOT_FOUND, 'responses/notFound');
+export class NotFound extends Response {
+
+  constructor(data: any) {
+    super(data);
+  }
+
+  public async execute(_req: express.Request, _res: express.Response): Promise<ResponseFunction> {
+    return httpResponse(this.responseData, HTTP_STATUS_CODE.NOT_FOUND, 'responses/notFound');
+  }
 }
+

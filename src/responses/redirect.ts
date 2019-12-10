@@ -1,14 +1,24 @@
 import * as express from 'express';
-import { ResponseFunction } from '../system/controllers';
-
+import { Response, ResponseFunction } from '../system/http';
 
 /**
  * Redirects to another route
  * 
  * @param url - url path to another location
  */
-export function redirect(url : string): ResponseFunction {
-  return (_ : express.Request, res: express.Response) =>{
-      return res.redirect(url);
+export class Redirect extends Response {
+
+  protected url: string;
+
+  constructor(url: any) {
+    super(null);
+
+    this.url = url;
+  }
+
+  public async execute(_req: express.Request, res: express.Response): Promise<ResponseFunction | void> {
+    res.redirect(this.url);
   }
 }
+
+

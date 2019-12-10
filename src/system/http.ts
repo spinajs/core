@@ -1,3 +1,8 @@
+// tslint:disable: no-bitwise
+
+import { Configuration } from '@spinajs/configuration';
+import { Autoinject, DI } from '@spinajs/di';
+import { ArgumentException, AuthenticationException, BadRequestException, ForbiddenException, IOException, NotAcceptableException, NotAcceptedException, NotFoundException, NotImplementedException, ServerErrorException, ValidationException } from '@spinajs/exceptions';
 import * as express from 'express';
 import * as fs from 'fs';
 import * as http from 'http';
@@ -6,22 +11,20 @@ import { AddressInfo } from 'net';
 import { join, normalize } from 'path';
 import * as pugTemplate from 'pug';
 import * as randomstring from 'randomstring';
-
-import { unauthorized, forbidden, badRequest, notFound, serverError } from '../responses';
-import { Configuration } from './configuration';
-import { LogModule, Logger, Log } from './log';
-import { DI, Autoinject } from './di';
-import { IOException, AuthenticationException, ForbiddenException, ArgumentException, BadRequestException, ValidationException, NotAcceptedException, NotAcceptableException, NotFoundException, ServerErrorException, NotImplementedException } from './exceptions';
+import { BadRequest, Forbidde n, NotFound, ServerError, Unauthorized } from '../responses';
+import { Log, Logger, LogModule } from './log';
 import { ModuleBase } from './module';
 
+export type ResponseFunction = (req: express.Request, res: express.Response) => void;
+
 export abstract class Response {
-  protected ResponseData: any;
+  protected responseData: any;
 
   constructor(responseData: any) {
-    this.ResponseData = responseData;
+    this.responseData = responseData;
   }
 
-  public abstract async execute(req: express.Request, res: express.Response): Promise<void>;
+  public abstract async execute(req: express.Request, res: express.Response): Promise<ResponseFunction | void>;
 }
 
 /**
@@ -49,7 +52,7 @@ export enum HttpAcceptHeaders {
   ALL = 1 | 2 | 4,
 }
 
-export interface HttpStaticFileConfiguration {
+export interface IHttpStaticFileConfiguration {
   /**
    * virtual prefix in url eg. http://localhost:3000/static/images/kitten.jpg
    */
@@ -64,7 +67,7 @@ export interface HttpStaticFileConfiguration {
 /**
  * Http server & express.js configuration
  */
-export interface HttpConfiguraton {
+export interface IHttpConfiguraton {
   /**
    * port of http server to listen.
    */
@@ -78,7 +81,7 @@ export interface HttpConfiguraton {
   /**
    * Static files folder. Feel free to override this per app
    */
-  Static: HttpStaticFileConfiguration;
+  Static: IHttpStaticFileConfiguration;
 
   /**
    * Last resort fatal error fallback template, embedded in code
@@ -171,7 +174,7 @@ export enum HTTP_STATUS_CODE {
  * @param status - status code
  */
 export function jsonResponse(model: any, status?: HTTP_STATUS_CODE) {
-  return function(_req: express.Request, res: express.Response) {
+  return (_req: express.Request, res: express.Response) => {
     res.status(status ? status : HTTP_STATUS_CODE.OK);
 
     if (model) {
@@ -188,17 +191,17 @@ export function jsonResponse(model: any, status?: HTTP_STATUS_CODE) {
  * @param status - optional status code
  */
 export function pugResponse(file: string, model: any, status?: HTTP_STATUS_CODE) {
-  const Log: Log = DI.get<LogModule>('LogModule').getLogger();
-  const Cfg: Configuration = DI.get('Configuration');
+  const log: Log = DI.get<LogModule>('LogModule').getLogger();
+  const cfg: Configuration = DI.get('Configuration');
 
-  return function(_req: express.Request, res: express.Response) {
+  return (_req: express.Request, res: express.Response) => {
     res.set('Content-Type', 'text/html');
 
     try {
       try {
         _render(file, model, status);
       } catch (err) {
-        Log.warn(`Cannot render pug file ${file}, error: ${err.message}:${err.stack}`, err);
+        log.warn(`Cannot render pug file ${file}, error: ${err.message}:${err.stack}`, err);
 
         // try to render server error response
         _render('responses/serverError.pug', err, HTTP_STATUS_CODE.INTERNAL_ERROR);
@@ -207,10 +210,10 @@ export function pugResponse(file: string, model: any, status?: HTTP_STATUS_CODE)
       // final fallback rendering error fails, we render embedded html error page
       const ticketNo = randomstring.generate(7);
 
-      Log.warn(`Cannot render pug file error: ${err.message}, ticket: ${ticketNo}`, err);
+      log.warn(`Cannot render pug file error: ${err.message}, ticket: ${ticketNo}`, err);
 
       res.status(HTTP_STATUS_CODE.INTERNAL_ERROR);
-      res.send(Cfg.get<string>('http.FatalTemplate').replace('{ticket}', ticketNo));
+      res.send(cfg.get<string>('http.FatalTemplate').replace('{ticket}', ticketNo));
     }
 
     function _render(f: string, m: any, c: HTTP_STATUS_CODE) {
@@ -220,10 +223,10 @@ export function pugResponse(file: string, model: any, status?: HTTP_STATUS_CODE)
         view,
         _.merge(m, {
           // add i18n functions as globals
-          __: __,
-          __n: __n,
-          __l: __l,
-          __h: __h,
+          __,
+          __n,
+          __l,
+          __h,
         }),
       );
 
@@ -231,13 +234,13 @@ export function pugResponse(file: string, model: any, status?: HTTP_STATUS_CODE)
       res.send(content);
     }
 
-    function getView(file: string) {
-      const views = Cfg.get<string[]>('system.dirs.view')
-        .map(p => normalize(join(p, file)))
+    function getView(viewFile: string) {
+      const views = cfg.get<string[]>('system.dirs.view')
+        .map(p => normalize(join(p, viewFile)))
         .filter(f => fs.existsSync(f));
 
       if (_.isEmpty(views)) {
-        throw new IOException(`View file ${file} not exists.`);
+        throw new IOException(`View file ${viewFile} not exists.`);
       }
 
       // return last merged path, eg. if application have own view files (override standard views)
@@ -259,10 +262,10 @@ export function httpResponse(model: any, code: HTTP_STATUS_CODE, template: strin
   const cfg: Configuration = DI.get('Configuration');
   const acceptedHeaders = cfg.get<HttpAcceptHeaders>('http.AcceptHeaders');
 
-  return function(req: express.Request, res: express.Response) {
-    if (req.accepts('html') && (acceptedHeaders & HttpAcceptHeaders.HTML) == HttpAcceptHeaders.HTML) {
+  return (req: express.Request, res: express.Response) => {
+    if (req.accepts('html') && (acceptedHeaders & HttpAcceptHeaders.HTML) === HttpAcceptHeaders.HTML) {
       pugResponse(`${template}.pug`, model, code)(req, res);
-    } else if (req.accepts('json') && (acceptedHeaders & HttpAcceptHeaders.HTML) == HttpAcceptHeaders.JSON) {
+    } else if (req.accepts('json') && (acceptedHeaders & HttpAcceptHeaders.HTML) === HttpAcceptHeaders.JSON) {
       jsonResponse(model, code)(req, res);
     } else {
       jsonResponse(model, code)(req, res);
@@ -274,51 +277,86 @@ export function httpResponse(model: any, code: HTTP_STATUS_CODE, template: strin
  * Http server implementation. Default uses Express.js
  */
 export class HttpServer extends ModuleBase {
-  /**
-   * Logger for this module
-   */
-  @Logger({ module: 'HttpServer' })
-  Log: Log;
-
-  /**
-   * Express app instance
-   */
-  protected Express: express.Express;
-
-  /**
-   * Http socket server
-   */
-  protected Server: http.Server;
-
-  /**
-   * Injected configuration
-   */
-  @Autoinject
-  protected Cfg: Configuration;
-
-  _port: number;
 
   /**
    * Gets http port server is running on
    */
   public get Port(): number {
-    return this._port;
+    return this.port;
   }
 
-  _address: string;
 
   /**
    * Gets address that server is running on
    */
   public get Address(): string {
-    return this._address;
+    return this.address;
+  }
+
+  /**
+   * Express app instance
+   */
+  protected express: express.Express;
+
+  /**
+   * Http socket server
+   */
+  protected server: http.Server;
+
+  /**
+   * Injected configuration
+   */
+  @Autoinject()
+  protected cfg: Configuration;
+
+  protected port: number;
+  protected address: string;
+
+  /**
+   * Logger for this module
+   */
+  @Logger({ module: 'HttpServer' })
+  private log: Log;
+
+  /**
+   * Starts http server.
+   */
+  public async start() {
+    const port = this.cfg.get('http.port', 1337);
+    return new Promise((res, _rej) => {
+      this.handleResponse();
+      this.handleErrors();
+
+      this.server = this.express.listen(port, () => {
+        this.port = (this.server.address() as AddressInfo).port;
+        this.address = (this.server.address() as AddressInfo).address;
+
+        this.log.info(`Http server started at ${this.Address}:${this.Port}`);
+        res();
+      });
+    });
+  }
+
+  public stop() {
+    if (this.server) {
+      this.server.close();
+    }
+  }
+
+  /**
+   * Registers global middleware to express app
+   *
+   * @param middleware - middleware function
+   */
+  public use(middleware: any): void {
+    this.express.use(middleware);
   }
 
   /**
    * Creates express app & registers middlewares
    */
   protected async onInitialize() {
-    this.Express = express();
+    this.express = express();
 
     this.registerMiddlewares();
     this.registerStaticFiles();
@@ -328,7 +366,7 @@ export class HttpServer extends ModuleBase {
    * Adds common app-wise middlewares to express stack.
    */
   protected registerMiddlewares() {
-    this.Cfg.get<any[]>('http.middlewares', []).forEach(m => {
+    this.cfg.get<any[]>('http.middlewares', []).forEach(m => {
       this.use(m);
     });
   }
@@ -337,9 +375,9 @@ export class HttpServer extends ModuleBase {
    * Adds static file to express. Paths are taken from config files.
    */
   protected registerStaticFiles() {
-    this.Cfg.get<HttpStaticFileConfiguration[]>('http.static', []).forEach(s => {
-      this.Log.info(`Serving static content from: ${s.Path} at prefix: ${s.Route}`);
-      this.Express.use(s.Route, express.static(s.Path));
+    this.cfg.get<IHttpStaticFileConfiguration[]>('http.static', []).forEach(s => {
+      this.log.info(`Serving static content from: ${s.Path} at prefix: ${s.Route}`);
+      this.express.use(s.Route, express.static(s.Path));
     });
   }
 
@@ -347,15 +385,15 @@ export class HttpServer extends ModuleBase {
    * Handles thrown exceptions in actions.
    */
   protected handleErrors() {
-    this.Express.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      this.Log.error(`Route error: ${err}, stack: ${err.stack}`, err.parameter);
-      var error = {
+    this.express.use((err: any, req: express.Request, res: express.Response) => {
+      this.log.error(`Route error: ${err}, stack: ${err.stack}`, err.parameter);
+      const error = {
         message: err.message,
         parameters: err.parameter,
         stack: {},
       };
 
-      if (process.env.NODE_ENV == 'development') {
+      if (process.env.NODE_ENV === 'development') {
         error.stack = err.stack ? err.stack : err.parameter && err.parameter.stack;
       }
 
@@ -394,7 +432,7 @@ export class HttpServer extends ModuleBase {
    * Executes response
    */
   protected handleResponse() {
-    this.Express.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    this.express.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
       if (!res.locals.response) {
         next(new ServerErrorException(`Route not found ${req.method}:${req.originalUrl}`));
         return;
@@ -402,39 +440,5 @@ export class HttpServer extends ModuleBase {
 
       res.locals.response(req, res, next);
     });
-  }
-
-  /**
-   * Starts http server.
-   */
-  public async start() {
-    const port = this.Cfg.get('http.port', 1337);
-    return new Promise((res, _rej) => {
-      this.handleResponse();
-      this.handleErrors();
-
-      this.Server = this.Express.listen(port, () => {
-        this._port = (<AddressInfo>this.Server.address()).port;
-        this._address = (<AddressInfo>this.Server.address()).address;
-
-        this.Log.info(`Http server started at ${this.Address}:${this.Port}`);
-        res();
-      });
-    });
-  }
-
-  public stop() {
-    if (this.Server) {
-      this.Server.close();
-    }
-  }
-
-  /**
-   * Registers global middleware to express app
-   *
-   * @param middleware - middleware function
-   */
-  public use(middleware: any): void {
-    this.Express.use(middleware);
   }
 }

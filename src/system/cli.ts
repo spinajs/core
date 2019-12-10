@@ -1,12 +1,11 @@
-import * as commander from 'commander';
-import * as _ from 'lodash';
-
-import { Configuration } from './configuration';
-import { Autoinject } from './di';
-import { ArgumentException } from './exceptions';
+import { Configuration } from '@spinajs/configuration';
+import { Autoinject } from "@spinajs/di";
+import { ArgumentException } from '@spinajs/exceptions';
 import { ModuleBase } from './module';
 import { ClassInfo, FromFiles } from './reflection';
-import { FrameworkModule } from './interfaces';
+
+import * as commander from 'commander';
+import * as _ from 'lodash';
 
 export const CLI_DESCRIPTOR_SYMBOL = Symbol.for('CLI_DESCRIPTOR');
 
@@ -32,7 +31,7 @@ export interface ICliCommand {
   /**
    * Command name
    */
-  Name: string;
+  name: string;
 
   /**
    * This function is executed by cli. Do command stuff here.
@@ -41,9 +40,9 @@ export interface ICliCommand {
 }
 
 export abstract class CliCommandBase implements ICliCommand {
-  public get Name(): string {
+  public get name(): string {
     const desc = (this.constructor as any)[CLI_DESCRIPTOR_SYMBOL] as CliDescriptor;
-    return desc.Name;
+    return desc.name;
   }
 
   public abstract execute(...args: any[]): void;
@@ -82,18 +81,18 @@ export class CliDescriptor {
   /**
    * Name of command eg. test:cli
    */
-  public Name: string = '';
+  public name: string = '';
 
   /**
    * Command general description, used when displaying help
    */
-  public Description: string = '';
+  public description: string = '';
 
   /**
    * Cli commands options
    * @see CliOption
    */
-  public Options: ICliOption[] = [];
+  public options: ICliOption[] = [];
 }
 
 function initializeCLICommand(target: any) {
@@ -125,8 +124,8 @@ export function Cli(name: string, description: string) {
 
     const descriptor = target[CLI_DESCRIPTOR_SYMBOL] as CliDescriptor;
 
-    descriptor.Name = name;
-    descriptor.Description = description;
+    descriptor.name = name;
+    descriptor.description = description;
   };
 }
 
@@ -168,49 +167,49 @@ export function CliOption(params: string, description: string) {
 
     const descriptor = target[CLI_DESCRIPTOR_SYMBOL] as CliDescriptor;
 
-    descriptor.Options.push({
+    descriptor.options.push({
       Description: description,
       Params: params,
     });
   };
 }
 
-export interface ICliModule extends FrameworkModule {
+export abstract class CliModule extends ModuleBase {
   /**
    * Avaible commands ready to run
    */
-  Commands: Promise<Array<ClassInfo<ICliCommand>>>;
+  public abstract commands: Promise<Array<ClassInfo<ICliCommand>>>;
 
   /**
    * Gets command by name
    *
    * @param name name of command
    */
-  get(name: string): Promise<ICliCommand>;
+  public abstract get(name: string): Promise<ICliCommand>;
 }
 
 /**
  * Cli module implementation. Loads all commands from defined paths in config & prepares them to use.
  */
-export class FrameworkCliModule extends ModuleBase implements ICliModule {
+export class FrameworkCliModule extends CliModule {
 
 
   /**
    * Avaible commands ready to run
    */
-  @FromFiles('/**/*Cli.{js,ts}', 'system.dirs.cli')
-  public Commands: Promise<ClassInfo<ICliCommand>[]>;
+  @FromFiles('/**/*.{js,ts}', 'system.dirs.cli')
+  public commands: Promise<Array<ClassInfo<ICliCommand>>>;
 
   /**
    * Global configuration. It takes `system.dirs.cli` variable with array of dirs to check
    */
-  @Autoinject
-  private Cfg: Configuration;
+  @Autoinject()
+  private cfg: Configuration;
 
   /**task
    * process arguments list
    */
-  private Args: string[];
+  private args: string[];
 
   /**
    * Constructs CLI module
@@ -220,7 +219,7 @@ export class FrameworkCliModule extends ModuleBase implements ICliModule {
   constructor(args?: string[]) {
     super();
 
-    this.Args = args;
+    this.args = args;
   }
 
   /**
@@ -229,49 +228,46 @@ export class FrameworkCliModule extends ModuleBase implements ICliModule {
    * @param name name of command
    */
   public async get(name: string): Promise<ICliCommand> {
-    
+
     if (_.isEmpty(name) || _.isNil(name)) {
       throw new ArgumentException(`parameter name is null or empty`);
     }
 
-    for (const c of await this.Commands) {
-      if (c.Instance.Name === name) {
-        return c.Instance;
-      }
+    const commands = await this.commands;
+    let result = null;
+    if (commands) {
+      result = commands.find(c => {
+        return c.instance.name === name;
+      });
     }
 
-    return null;
+    return result ? result.instance : null;
   }
 
   protected async onInitialize() {
-    commander.version(`Spine version: ${this.Cfg.get('system.version', '1.1')}`);
+    commander.version(`Spine version: ${this.cfg.get('system.version', '1.1')}`);
 
-    for (const command of await this.Commands) {
-      const descriptor = command.Type[CLI_DESCRIPTOR_SYMBOL] as CliDescriptor;
+    const commands = await this.commands;
+    if (commands) {
+      commands.forEach(command => {
+        const descriptor = command.type[CLI_DESCRIPTOR_SYMBOL] as CliDescriptor;
+        const cmdInstance = commander.command(descriptor.name).description(descriptor.description);
 
-      const _c = commander.command(descriptor.Name).description(descriptor.Description);
-      descriptor.Options.forEach(o => {
-        _c.option(o.Params, o.Description);
-      });
-
-      _c.action((...args) => {
-        this.Commands.then(cmds => {
-          const cmd = _.find(cmds, c => c.Instance.Name === process.argv[2]);
-
-          if (!cmd) {
-            throw new ArgumentException(`command ${process.argv[2]} not found`);
-          }
-
-          cmd.Instance.execute(...args);
+        descriptor.options.forEach(o => {
+          cmdInstance.option(o.Params, o.Description);
         });
-      });
+
+        cmdInstance.action(command.instance.execute.bind(command.instance));
+      })
     }
 
-    if (this.Args == null || this.Args.length < 3) {
+
+
+    if (!this.args || this.args.length < 3) {
       commander.help();
       return;
     }
 
-    commander.parse(this.Args);
+    commander.parse(this.args);
   }
 }

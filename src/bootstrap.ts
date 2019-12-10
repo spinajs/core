@@ -1,20 +1,14 @@
-import {
-  HttpServer,
-  Controllers,
-  DI,
-  FrameworkLogModule,
-  LogModule,
-  FrameworkConfiguration,
-  Configuration,
-} from './system';
+import { Configuration, FrameworkConfiguration } from '@spinajs/configuration';
+import { DI } from "@spinajs/di";
+import { Controllers, FrameworkLogModule, HttpServer, LogModule } from './system';
 
 /**
  * Starting point for all applications. To create new app just subclass this.
  */
 export abstract class Application {
-  protected Controllers: Controllers;
+  protected controllers: Controllers;
 
-  protected HttpServer: HttpServer;
+  protected httpServer: HttpServer;
 
   public async run(): Promise<void> {
     // register framework default modules,
@@ -28,11 +22,11 @@ export abstract class Application {
     // other modules expecs log to exists already
     await DI.resolve<LogModule>(LogModule);
 
-    this.Controllers = await DI.resolve<Controllers>(Controllers);
-    this.HttpServer = await DI.resolve<HttpServer>(HttpServer);
+    this.controllers = await DI.resolve<Controllers>(Controllers);
+    this.httpServer = await DI.resolve<HttpServer>(HttpServer);
 
     // start server
-    await this.HttpServer.start();
+    await this.httpServer.start();
   }
 
   /**

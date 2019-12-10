@@ -1,34 +1,43 @@
+import { IOException } from '@spinajs/exceptions';
 import * as express from 'express';
 import * as fs from 'fs';
 import * as _ from 'lodash';
 import * as mime from 'mime';
+import { Response, ResponseFunction } from '../system/http';
 
-import { ResponseFunction } from '../system/controllers';
-import { IOException } from '../system/index';
+export class File extends Response {
 
-/**
-* Sends file to client at given path & filename. If file exists 
-* it will send file with 200 OK, if not exists 404 NOT FOUND
+  protected path: string;
+  protected filename: string;
+  protected mimeType: string;
 
- * @param path - server full path to file
- * @param filename - real filename send to client
- * @param mimeType - optional mimetype. If not set, server will try to guess.
- */
-export function file(path: string, filename: string, mimeType?: string): ResponseFunction {
-  let mType = mimeType ? mimeType : mime.getType(filename);
+  /**
+   * Sends file to client at given path & filename. If file exists 
+   * it will send file with 200 OK, if not exists 404 NOT FOUND
+   * @param path - server full path to file
+   * @param filename - real filename send to client
+   * @param mimeType - optional mimetype. If not set, server will try to guess.
+   */
+  constructor(path: string, filename: string, mimeType?: string) {
+    super(null);
 
-  if (!fs.existsSync(path)) {
-    throw new IOException(`File ${path} not exists`);
+    this.mimeType = mimeType ? mimeType : mime.getType(filename);
+    this.filename = filename;
+    this.path = path;
+
+    if (!fs.existsSync(path)) {
+      throw new IOException(`File ${path} not exists`);
+    }
   }
 
-  return async function(_req: express.Request, res: express.Response) {
+  public async execute(_req: express.Request, res: express.Response): Promise<ResponseFunction | void> {
     return new Promise((resolve, reject) => {
       res.sendFile(
-        path,
+        this.path,
         {
           headers: {
-            'Content-Disposition': `attachment; filename="${filename}"`,
-            'Content-Type': mType,
+            'Content-Disposition': `attachment; filename="${this.filename}"`,
+            'Content-Type': this.mimeType,
           },
         },
         (err: Error) => {
@@ -40,5 +49,6 @@ export function file(path: string, filename: string, mimeType?: string): Respons
         },
       );
     });
-  };
+  }
 }
+

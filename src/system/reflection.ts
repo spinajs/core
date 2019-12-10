@@ -4,9 +4,9 @@ import * as _ from 'lodash';
 import * as path from 'path';
 import * as ts from "typescript";
 
-import { DI } from './di';
-import { ArgumentException, IOException } from './exceptions';
-import { Configuration } from "./configuration";
+import { Configuration } from '@spinajs/configuration';
+import { DI } from '@spinajs/di';
+import { ArgumentException, IOException } from '@spinajs/exceptions';
 
 /**
  * Class info structure
@@ -15,20 +15,20 @@ export class ClassInfo<T> {
   /**
    * Full file path of loaded class
    */
-  public File: string;
+  public file: string;
   /**
    * Class name
    */
-  public Name: string;
+  public name: string;
   /**
    * Javascript class object
    */
-  public Type: any;
+  public type: any;
 
   /**
    * Resolved instance
    */
-  public Instance: T;
+  public instance: T;
 }
 
 /**
@@ -137,16 +137,16 @@ export function FromFiles(filter: string, configPath: string, resolve: boolean =
 
       return Promise.all(
         directories
-          .map(d => path.normalize(d))
-          .filter(d => {
+          .map((d: string) => path.normalize(d))
+          .filter((d: string) => {
             if (!fs.existsSync(d)) {
               return false;
             }
 
             return true;
           })
-          .flatMap(d => glob.sync(path.join(d, filter)))
-          .map(async f => {
+          .flatMap((d: string) => glob.sync(path.join(d, filter)))
+          .map(async (f: string) => {
             const name = path.parse(f).name;
             const type = require(f)[name];
 
@@ -160,10 +160,10 @@ export function FromFiles(filter: string, configPath: string, resolve: boolean =
             }
 
             return {
-              File: f,
-              Instance: instance,
-              Name: name,
-              Type: type,
+              file: f,
+              instance,
+              name,
+              type,
             };
           }),
       );

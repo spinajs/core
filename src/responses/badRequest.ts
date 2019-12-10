@@ -1,5 +1,5 @@
-import { HTTP_STATUS_CODE, httpResponse } from '../system/http';
-import { ResponseFunction } from '../system/controllers';
+import * as express from 'express';
+import { HTTP_STATUS_CODE, httpResponse, Response, ResponseFunction } from '../system/http';
 
 /**
  * Internall response function.
@@ -7,6 +7,14 @@ import { ResponseFunction } from '../system/controllers';
  * @param err - error to send
  */
 
-export function badRequest(err?: any): ResponseFunction {
-  return httpResponse(err, HTTP_STATUS_CODE.BAD_REQUEST, 'responses/badRequest');
+export class BadRequest extends Response {
+
+  constructor(data: any) {
+    super(data);
+  }
+
+  public async execute(_req: express.Request, _res: express.Response): Promise<ResponseFunction | void> {
+    return httpResponse(this.responseData, HTTP_STATUS_CODE.BAD_REQUEST, 'responses/badRequest');
+  }
 }
+

@@ -3,9 +3,9 @@ import 'mocha';
 import * as chai from 'chai';
 import * as _ from 'lodash';
 
-import { Configuration } from '../../src/system/configuration';
-import { ControllersModule } from '../../src/system/controllers';
-import { DI } from '../../src/system/di';
+import { Configuration } from '@spinajs/configuration';
+import { DI } from '@spinajs/DI';
+import { Controllers } from '../../src/system/controllers';
 import { HttpServer } from '../../src/system/http';
 import { LogModule } from '../../src/system/log';
 import { dir } from '../misc';
@@ -16,7 +16,7 @@ import chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 
 function ctr() {
-    return DI.resolve<ControllersModule>(ControllersModule);
+    return DI.resolve<Controllers>(Controllers);
 }
 
 function srv() {

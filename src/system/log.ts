@@ -1,9 +1,15 @@
-import { ModuleBase } from './module';
-import { Configuration } from './configuration';
+// tslint:disable: ban-types
+// tslint:disable: interface-name
+  // tslint:disable: unified-signatures
+
+
 import * as bunyan from 'bunyan';
 import { default as chalk } from 'chalk';
 import { Writable } from 'stream';
-import { Autoinject, DI } from './di';
+
+import { Configuration } from '@spinajs/configuration';
+import { Autoinject, DI } from '@spinajs/di';
+import { ModuleBase } from './module';
 
 /**
  * -----------------------------------------------------------------------------------
@@ -20,11 +26,11 @@ import { Autoinject, DI } from './di';
  * @param options  - additional logger options
  */
 export function Logger(options?: any) {
-  return function(target?: any, key?: string): any {
-    let logger: Log = undefined;
+  return (target?: any, key?: string): any => {
+    let logger: Log;
 
     // property getter
-    var getter = function() {
+    const getter = () => {
       if (!logger) {
         logger = DI.get<LogModule>('LogModule').getLogger(options);
       }
@@ -51,14 +57,14 @@ export function Logger(options?: any) {
  * * FATAL - red on white background
  */
 export class ConsoleLogStream extends Writable {
-  TRACE = 10;
-  DEBUG = 20;
-  INFO = 30;
-  WARN = 40;
-  ERROR = 50;
-  FATAL = 60;
+  private TRACE = 10;
+  private DEBUG = 20;
+  private INFO = 30;
+  private WARN = 40;
+  private ERROR = 50;
+  private FATAL = 60;
 
-  write(chunk: any, _encoding: string | Function, _cb?: Function): boolean {
+  public write(chunk: any, _encoding: string | Function, _cb?: Function): boolean {
     const type = this._getNameFromType(chunk.level);
     const message = `${chunk.time.toISOString()} ${type} ${chunk.name}: ${chunk.msg} (module=${chunk.module})`;
     let c = null;
@@ -89,7 +95,7 @@ export class ConsoleLogStream extends Writable {
     return true;
   }
 
-  _getNameFromType(type: number) {
+  private _getNameFromType(type: number) {
     switch (type) {
       case this.TRACE:
         return 'TRACE';
@@ -161,7 +167,7 @@ const DEFAULT_OPTIONS: LoggerOptions = {
        * We use default console log stream with colors
        */
       stream: new ConsoleLogStream(),
-      level: process.env.NODE_ENV == 'development' ? 'trace' : 'info',
+      level: process.env.NODE_ENV === 'development' ? 'trace' : 'info',
     },
   ],
 };
@@ -358,6 +364,12 @@ export abstract class LogModule extends ModuleBase {
  * Default Log implementation that uses bunyan internally. Feel free to implement own
  */
 export class FrameworkLogModule extends LogModule {
+
+  /**
+   * Injected Configuration object
+   */
+  @Autoinject()
+  public cfg: Configuration = null;
   /**
    * root logger
    * @access protected
@@ -369,12 +381,6 @@ export class FrameworkLogModule extends LogModule {
    * @access protected
    */
   protected name: string = 'Log';
-
-  /**
-   * Injected Configuration object
-   */
-  @Autoinject
-  public cfg: Configuration = null;
 
   /**
    * Initializes bunyan logger & hooks for process:uncaughtException to log fatal application events
@@ -392,7 +398,7 @@ export class FrameworkLogModule extends LogModule {
    * Creates child logger
    * @param options - additional logger options eg. fields.
    */
-  getLogger(options?: any[]): Log {
+  public getLogger(options?: any[]): Log {
     return this.log.child(options);
   }
 }

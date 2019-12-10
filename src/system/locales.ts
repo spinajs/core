@@ -4,45 +4,47 @@ import * as _ from 'lodash';
 import * as path from 'path';
 import * as util from 'util';
 
+import { Configuration } from '@spinajs/configuration';
+import { Autoinject, DI } from '@spinajs/di';
+import * as MakePlural from 'make-plural';
 import { File } from './filesystem';
-import { Autoinject, Configuration, DI, Log, Logger, ModuleBase } from './index';
+import { Log, Logger, ModuleBase } from './index';
 
-const MakePlural = require('make-plural');
-const intervalParse = require('math-interval-parser');
+import intervalParse = require('math-interval-parser');
 
 export class Locales extends ModuleBase {
-  /**
-   * Logger for this module
-   */
-  @Logger({ module: 'Locales' })
-  protected Log: Log;
-
-  @Autoinject
-  protected Cfg: Configuration = null;
-
-  private _defaultLocale: string;
 
   /**
    * Default app locale, used when no configuration at request is provided
    */
   public get DefaultLocale(): string {
-    return this._defaultLocale;
+    return this.defaultLocale;
   }
 
-  Locales = new Map<string, any>();
+  protected locales = new Map<string, any>();
+  /**
+   * Logger for this module
+   */
+  @Logger({ module: 'Locales' })
+  protected log: Log;
+
+  @Autoinject()
+  protected cfg: Configuration = null;
+
+  private defaultLocale: string;
 
   constructor(cfg: Configuration) {
     super();
-    this.Cfg = cfg;
+    this.cfg = cfg;
   }
 
   public async initialize() {
-    this._defaultLocale = this.Cfg.get('locales.defaultLocale', 'en');
+    this.defaultLocale = this.cfg.get('locales.defaultLocale', 'en');
 
-    const files = this.Cfg.get<string[]>('system.dirs.locales')
+    const files = this.cfg.get<string[]>('system.dirs.locales')
       .filter(dir => {
         if (!fs.existsSync(dir)) {
-          this.Log.warn(`Locales dir at ${dir} not exists.`);
+          this.log.warn(`Locales dir at ${dir} not exists.`);
           return false;
         }
 
@@ -52,15 +54,15 @@ export class Locales extends ModuleBase {
         return glob.sync(dir + '*/**/*.json');
       });
 
-    for (let file of files) {
+    for (const file of files) {
       try {
         const language = path.basename(file, '.json');
         const content = await File.read(file);
         const data = JSON.parse(content);
 
-        this.Locales.set(language, _.merge(this.Locales.has(language) ? this.Locales.get(language) : {}, data));
+        this.locales.set(language, _.merge(this.locales.has(language) ? this.locales.get(language) : {}, data));
       } catch (err) {
-        this.Log.error(`Cannot load language file ${file}, err: {0}`, err);
+        this.log.error(`Cannot load language file ${file}, err: {0}`, err);
       }
     }
   }
@@ -71,14 +73,14 @@ export class Locales extends ModuleBase {
    * @param locale - locale to set
    */
   public setLocale(locale: string) {
-    this._defaultLocale = locale;
+    this.defaultLocale = locale;
   }
 
   /**
    * Gets current locale
    */
   public getLocale(): string {
-    return this._defaultLocale;
+    return this.defaultLocale;
   }
 
   /**
@@ -86,12 +88,12 @@ export class Locales extends ModuleBase {
    * If no translation is avaible at current selected language, then fallback to
    * default language, if still no translation exists, original text is returned
    *
-   * @param text { string | PhraseWithOptions } - text to localize.
+   * @param text { string | IPhraseWithOptions } - text to localize.
    * @param args { any[] } - argument passed to formatted text
    */
-  public __(text: string | PhraseWithOptions, ...args: any[]): string {
+  public __(text: string | IPhraseWithOptions, ...args: any[]): string {
     if (_.isString(text)) {
-      const locTable = this.Locales.has(this.DefaultLocale) ? this.Locales.get(this.DefaultLocale) : null;
+      const locTable = this.locales.has(this.DefaultLocale) ? this.locales.get(this.DefaultLocale) : null;
 
       if (locTable) {
         return util.format(locTable[text], ...args);
@@ -99,9 +101,9 @@ export class Locales extends ModuleBase {
         return util.format(text, ...args);
       }
     } else {
-      const locTable = this.Locales.has(text.locale)
-        ? this.Locales.get(text.locale)
-        : this.Locales.get(this.DefaultLocale);
+      const locTable = this.locales.has(text.locale)
+        ? this.locales.get(text.locale)
+        : this.locales.get(this.DefaultLocale);
       return util.format(locTable[text.phrase], ...args);
     }
   }
@@ -115,7 +117,7 @@ export class Locales extends ModuleBase {
    * @example use like `__n("%s cats", 1) returns `1 cat`
    */
   public __n(text: string, count: number): string {
-    const locTable = this.Locales.has(this.DefaultLocale) ? this.Locales.get(this.DefaultLocale) : null;
+    const locTable = this.locales.has(this.DefaultLocale) ? this.locales.get(this.DefaultLocale) : null;
 
     if (!locTable) {
       if (/%/.test(text)) {
@@ -128,9 +130,9 @@ export class Locales extends ModuleBase {
     const phrase = locTable[text];
     const pluralVerb = MakePlural[this.DefaultLocale](count);
     if (phrase[pluralVerb]) {
-      return <string>phrase[pluralVerb];
-    } else if (phrase['other']) {
-      return this._getInterval(phrase['other'], count);
+      return phrase[pluralVerb] as string;
+    } else if (phrase.other) {
+      return this._getInterval(phrase.other, count);
     }
 
     return null;
@@ -144,8 +146,8 @@ export class Locales extends ModuleBase {
   public __l(text: string) {
     const result: string[] = [];
 
-    for (let [, translations] of this.Locales) {
-      result.push(<string>_.property(text)(translations));
+    for (const [, translations] of this.locales) {
+      result.push(_.property(text)(translations) as string);
     }
 
     return result;
@@ -159,8 +161,8 @@ export class Locales extends ModuleBase {
   public __h(text: string) {
     const result: any[] = [];
 
-    for (let [locale, translations] of this.Locales) {
-      result.push({ [locale]: <string>_.property(text)(translations) });
+    for (const [locale, translations] of this.locales) {
+      result.push({ [locale]: _.property(text)(translations) as string });
     }
 
     return result;
@@ -203,7 +205,7 @@ export class Locales extends ModuleBase {
         }
 
         return (
-          Math.min(interval.from.value, c) == interval.from.value && Math.max(interval.to.value, c) == interval.to.value
+          Math.min(interval.from.value, c) === interval.from.value && Math.max(interval.to.value, c) === interval.to.value
         );
       }
 
@@ -212,7 +214,7 @@ export class Locales extends ModuleBase {
   }
 }
 
-interface PhraseWithOptions {
+interface IPhraseWithOptions {
   phrase: string;
   locale: string;
 }
@@ -225,7 +227,7 @@ interface PhraseWithOptions {
  * @param text { string } - text to localize.
  * @param locale { string } - selected locale, if not specified - default locale is selected
  */
-global.__ = function(text: string | PhraseWithOptions, ...args: any[]) {
+global.__ = (text: string | IPhraseWithOptions, ...args: any[]) => {
   return DI.get<Locales>('Locales').__(text, ...args);
 };
 
@@ -237,7 +239,7 @@ global.__ = function(text: string | PhraseWithOptions, ...args: any[]) {
  * @param count { number } - number of items/things
  * @example use like `__n("%s cats", 1) returns `1 cat`
  */
-global.__n = function(text: string, count: number) {
+global.__n = (text: string, count: number) => {
   return DI.get<Locales>('Locales').__n(text, count);
 };
 
@@ -246,7 +248,7 @@ global.__n = function(text: string, count: number) {
  *
  * @param text { string } - text to translate
  */
-global.__l = function(text: string) {
+global.__l = (text: string) => {
   return DI.get<Locales>('Locales').__l(text);
 };
 
@@ -255,6 +257,6 @@ global.__l = function(text: string) {
  *
  * @param text { string } - text to translate
  */
-global.__h = function(text: string) {
+global.__h = (text: string) => {
   return DI.get<Locales>('Locales').__h(text);
 };

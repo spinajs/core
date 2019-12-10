@@ -6,9 +6,7 @@ import { File } from "./../system/filesystem";
 function templateExists(templateName: string): string {
     const config = DI.get<Configuration>(Configuration);
 
-    const result = config.get<string[]>("system.dirs.prop").find(async (p: string) => {
-        return File.existsSync(path.join(p, templateName));
-    })
+    const result = config.get<string[]>("system.dirs.prop").find( (p: string) => File.existsSync(path.join(p, templateName)))
 
     if (result) {
         return path.join(result, templateName);
@@ -27,7 +25,8 @@ function codeGenerator(plop: any) {
         prompts: [{
             type: "input",
             name: "name",
-            message: "please give command name"
+            message: "please give command name",
+
         }],
        
     })

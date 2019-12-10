@@ -1,17 +1,16 @@
+import { Autoinject, DI } from "@spinajs/di";
+import { ServerErrorException, ValidationException } from '@spinajs/exceptions';
 import * as express from "express";
-import { TypescriptCompiler, FromFiles, ClassInfo } from '../reflection';
-import { ValidationException, ServerErrorException } from '../exceptions';
-import { IMiddleware, NewableMiddleware, BaseMiddleware } from "./middlewares";
-import { IPolicy, NewablePolicy } from "./policies";
-import { IRoute, RouteType, IRouteParameter, ParameterType } from "./routes";
-import { ModuleBase } from "../module";
-import { Autoinject } from "../di";
-import { HttpServer } from "../http";
-import { Schema } from "../schema";
 import { RequestHandler } from "express-serve-static-core";
-import { DI } from "../di";
+import { HttpServer } from "../http";
+import { ModuleBase } from "../module";
+import { ClassInfo, FromFiles, TypescriptCompiler } from '../reflection';
+import { Schema } from "../schema";
+import { BaseMiddleware, IMiddleware, NewableMiddleware } from "./middlewares";
+import { IPolicy, NewablePolicy } from "./policies";
+import { IRoute, IRouteParameter, ParameterType, RouteType } from "./routes";
 
-const ControllerKey = Symbol("CONTROLLER_SYMBOL");
+const controllerKey = Symbol("CONTROLLER_SYMBOL");
 
 export interface IControllerMetadata {
     Routes: Map<string | symbol, IRoute>;
@@ -26,7 +25,7 @@ export interface IControllerMetadata {
 
 export function Controller(callback: (controller: IControllerMetadata, target: any, propertyKey: symbol | string, indexOrDescriptor: number | PropertyDescriptor) => void): any {
     return (target: any, propertyKey: string | symbol, indexOrDescriptor: number | PropertyDescriptor) => {
-        let metadata: IControllerMetadata = Reflect.getMetadata(ControllerKey, target.prototype || target);
+        let metadata: IControllerMetadata = Reflect.getMetadata(controllerKey, target.prototype || target);
         if (!metadata) {
             metadata = {
                 BasePath: null,
@@ -35,7 +34,7 @@ export function Controller(callback: (controller: IControllerMetadata, target: a
                 Routes: new Map<string, IRoute>()
             };
 
-            Reflect.defineMetadata(ControllerKey, metadata, target.prototype || target);
+            Reflect.defineMetadata(controllerKey, metadata, target.prototype || target);
         }
 
         if (callback) {
@@ -266,7 +265,7 @@ export class BaseController extends ModuleBase {
     /**
      * Express router with middleware stack
      */
-    public readonly Router: express.Router = express.Router();
+    public readonly router: express.Router = express.Router();
 
     /**
      * Get name of module
@@ -288,7 +287,7 @@ export class BaseController extends ModuleBase {
      * Get controller metadata eg. registered routes & route parameters, middlewares etc.
      */
     public get Metadata(): IControllerMetadata {
-        return Reflect.getMetadata(ControllerKey, this) as IControllerMetadata;
+        return Reflect.getMetadata(controllerKey, this) as IControllerMetadata;
     }
 
 
@@ -308,7 +307,7 @@ export class BaseController extends ModuleBase {
             handlers.push(...middlewares.filter(m => m.isEnabled(route, this)).map(m => _invokeAction(m.onAfterAction.bind(m))));
 
             // register to express router
-            (this.Router as any)[route.Type as string](path, handlers);
+            (this.router as any)[route.Type as string](path, handlers);
         }
 
         function _invokeAction(action: any) {
@@ -375,26 +374,26 @@ export class BaseController extends ModuleBase {
     }
 }
 
-export class ControllersModule extends ModuleBase {
+export class Controllers extends ModuleBase {
 
     /**
      * Loaded controllers
      */
-    @FromFiles('/**/*Controller.{ts,js}', 'system.dirs.controllers')
-    public Controllers: Promise<Array<ClassInfo<BaseController>>>;
+    @FromFiles('/**/*.{ts,js}', 'system.dirs.controllers')
+    public controllers: Promise<Array<ClassInfo<BaseController>>>;
 
     @Autoinject()
-    protected HttpServer: HttpServer;
+    protected httpServer: HttpServer;
 
     public async  initialize(): Promise<void> {
 
         // extract parameters info from controllers source code & register in http server
-        for (const controller of await this.Controllers) {
+        for (const controller of await this.controllers) {
 
-            const compiler = new TypescriptCompiler(controller.File);
-            const members = compiler.getClassMembers(controller.Name);
+            const compiler = new TypescriptCompiler(controller.file);
+            const members = compiler.getClassMembers(controller.name);
 
-            for (const [name, route] of controller.Instance.Metadata.Routes) {
+            for (const [name, route] of controller.instance.Metadata.Routes) {
                 if (members.has(name as string)) {
                     const member = members.get(name as string);
 
@@ -407,7 +406,7 @@ export class ControllersModule extends ModuleBase {
                 }
             }
 
-            this.HttpServer.use(controller.Instance.Router);
+            this.httpServer.use(controller.instance.router);
         }
     }
 }

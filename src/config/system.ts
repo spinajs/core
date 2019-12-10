@@ -25,6 +25,7 @@ module.exports.system = {
     channels: [dir('/../channels')],
     controllers: [dir('/../controllers')],
     schemas: [dir('/../schemas')],
+    // tslint:disable-next-line: object-literal-sort-keys
     responses: [dir('/../responses')],
     models: [dir('/../models')],
     migrations: [dir('/../migrations')],
