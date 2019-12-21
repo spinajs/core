@@ -1,6 +1,6 @@
 // tslint:disable: ban-types
 // tslint:disable: interface-name
-  // tslint:disable: unified-signatures
+// tslint:disable: unified-signatures
 
 
 import * as bunyan from 'bunyan';
