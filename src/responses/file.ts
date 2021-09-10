@@ -1,4 +1,4 @@
-import { IOException } from '@spinajs/exceptions';
+import { IOFail } from '@spinajs/exceptions';
 import * as express from 'express';
 import * as fs from 'fs';
 import * as _ from 'lodash';
@@ -26,7 +26,7 @@ export class File extends Response {
     this.path = path;
 
     if (!fs.existsSync(path)) {
-      throw new IOException(`File ${path} not exists`);
+      throw new IOFail(`File ${path} not exists`);
     }
   }
 

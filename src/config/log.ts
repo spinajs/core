@@ -20,7 +20,7 @@ module.exports.log = {
        * We use default console log stream with colors
        */
       stream: new ConsoleLogStream(),
-      level: process.env.NODE_ENV == 'development' ? 'trace' : 'info',
+      level: process.env.NODE_ENV === 'development' ? 'trace' : 'info',
     },
   ],
 };

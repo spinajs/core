@@ -2,7 +2,7 @@
 
 import { Configuration } from '@spinajs/configuration';
 import { Autoinject, DI } from '@spinajs/di';
-import { ArgumentException, AuthenticationException, BadRequestException, ForbiddenException, IOException, NotAcceptableException, NotAcceptedException, NotFoundException, NotImplementedException, ServerErrorException, ValidationException } from '@spinajs/exceptions';
+import { InvalidArgument, AuthenticationFailed, BadRequest, Forbidden, IOFail, ExpectedResponseUnacceptable, JsonValidationFailed, ResourceNotFound, MethodNotImplemented, UnexpectedServerError, ValidationFailed } from '@spinajs/exceptions';
 import * as express from 'express';
 import * as fs from 'fs';
 import * as http from 'http';
@@ -11,7 +11,7 @@ import { AddressInfo } from 'net';
 import { join, normalize } from 'path';
 import * as pugTemplate from 'pug';
 import * as randomstring from 'randomstring';
-import { BadRequest, Forbidde n, NotFound, ServerError, Unauthorized } from '../responses';
+import { BadRequest, Forbidden, NotFound, ServerError, Unauthorized } from '../responses';
 import { Log, Logger, LogModule } from './log';
 import { ModuleBase } from './module';
 
@@ -27,145 +27,8 @@ export abstract class Response {
   public abstract async execute(req: express.Request, res: express.Response): Promise<ResponseFunction | void>;
 }
 
-/**
- * Accept header enum
- */
-export enum HttpAcceptHeaders {
-  /**
-   * Accept header for JSON
-   */
-  JSON = 1,
 
-  /**
-   * Accept header for HTML
-   */
-  HTML = 2,
 
-  /**
-   * Accept header for XML
-   */
-  XML = 4,
-
-  /**
-   * Accept all accept headers shorcut
-   */
-  ALL = 1 | 2 | 4,
-}
-
-export interface IHttpStaticFileConfiguration {
-  /**
-   * virtual prefix in url eg. http://localhost:3000/static/images/kitten.jpg
-   */
-  Route: string;
-
-  /**
-   * full path to folder with static content
-   */
-  Path: string;
-}
-
-/**
- * Http server & express.js configuration
- */
-export interface IHttpConfiguraton {
-  /**
-   * port of http server to listen.
-   */
-  Port: number;
-
-  /**
-   * default middlewares applied to all routes
-   */
-  Middlewares: express.RequestHandler[];
-
-  /**
-   * Static files folder. Feel free to override this per app
-   */
-  Static: IHttpStaticFileConfiguration;
-
-  /**
-   * Last resort fatal error fallback template, embedded in code
-   * in case if we cannot render any static files
-   */
-  FatalTemplate: string;
-
-  /**
-   * Which accept headers we support (default JSON & HTML)
-   */
-  AcceptHeaders: HttpAcceptHeaders;
-}
-
-/**
- * HTTP response statuses
- */
-export enum HTTP_STATUS_CODE {
-  /**
-   * All ok with content
-   */
-  OK = 200,
-
-  /**
-   * Request is OK and new resource has been created.
-   */
-  CREATED = 201,
-
-  /**
-   * Request is accepted, but has not been completed yet.
-   */
-  ACCEPTED = 202,
-
-  /**
-   * ALl is ok & no content to return
-   */
-  NO_CONTENT = 204,
-
-  /**
-   * The server is delivering only part of the resource (byte serving) due to a range header
-   * sent by the client. The range header is used by HTTP clients to enable resuming of
-   * interrupted downloads, or split a download into multiple simultaneous streams.
-   */
-  PARTIAL_CONTENT = 206,
-
-  /**
-   * Resource is not modified
-   */
-  NOT_MODIFIED = 304,
-
-  /**
-   * Invalid request, eg. invalid parameters
-   */
-  BAD_REQUEST = 400,
-
-  /**
-   * Auth required
-   */
-  UNAUTHORIZED = 401,
-
-  /**
-   * No permission
-   */
-  FORBIDDEN = 403,
-
-  /**
-   * Resource not found
-   */
-  NOT_FOUND = 404,
-
-  /**
-   * Not acceptable request headers (Accept header)
-   */
-  NOT_ACCEPTABLE = 406,
-
-  /**
-   * Internal server error.
-   */
-  INTERNAL_ERROR = 500,
-
-  /**
-   * Method not implemented
-   */
-  NOT_IMPLEMENTED = 501,
-}
 
 /**
  * Sends data & sets proper header as json
@@ -240,7 +103,7 @@ export function pugResponse(file: string, model: any, status?: HTTP_STATUS_CODE)
         .filter(f => fs.existsSync(f));
 
       if (_.isEmpty(views)) {
-        throw new IOException(`View file ${viewFile} not exists.`);
+        throw new IOFail(`View file ${viewFile} not exists.`);
       }
 
       // return last merged path, eg. if application have own view files (override standard views)
@@ -400,25 +263,25 @@ export class HttpServer extends ModuleBase {
       let callback = null;
 
       switch (err.constructor) {
-        case AuthenticationException:
+        case AuthenticationFailed:
           callback = unauthorized({ error: err });
           break;
-        case ForbiddenException:
+        case Forbidden:
           callback = forbidden({ error: err });
           break;
-        case ArgumentException:
-        case BadRequestException:
-        case ValidationException:
-        case NotAcceptedException:
-        case NotAcceptableException:
+        case InvalidArgument:
+        case BadRequest:
+        case ValidationFailed:
+        case JsonValidationFailed:
+        case ExpectedResponseUnacceptable:
           callback = badRequest({ error: err });
           break;
-        case NotFoundException:
+        case ResourceNotFound:
           callback = notFound({ error: err });
           break;
-        case ServerErrorException:
-        case IOException:
-        case NotImplementedException:
+        case UnexpectedServerError:
+        case IOFail:
+        case MethodNotImplemented:
         default:
           callback = serverError({ error: err });
           break;
@@ -434,7 +297,7 @@ export class HttpServer extends ModuleBase {
   protected handleResponse() {
     this.express.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
       if (!res.locals.response) {
-        next(new ServerErrorException(`Route not found ${req.method}:${req.originalUrl}`));
+        next(new UnexpectedServerError(`Route not found ${req.method}:${req.originalUrl}`));
         return;
       }
 

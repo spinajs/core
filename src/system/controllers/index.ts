@@ -1,10 +1,10 @@
 import { Autoinject, DI } from "@spinajs/di";
-import { ServerErrorException, ValidationException } from '@spinajs/exceptions';
+import { UnexpectedServerError, ValidationFailed } from '@spinajs/exceptions';
+import { ClassInfo, FromFiles, TypescriptCompiler } from '@spinajs/reflection';
 import * as express from "express";
 import { RequestHandler } from "express-serve-static-core";
 import { HttpServer } from "../http";
 import { ModuleBase } from "../module";
-import { ClassInfo, FromFiles, TypescriptCompiler } from '../reflection';
 import { Schema } from "../schema";
 import { BaseMiddleware, IMiddleware, NewableMiddleware } from "./middlewares";
 import { IPolicy, NewablePolicy } from "./policies";
@@ -359,12 +359,12 @@ export class BaseController extends ModuleBase {
 
                     const validator = await DI.resolve<Schema>(Schema);
                     if (!validator) {
-                        throw new ServerErrorException("validation service is not avaible");
+                        throw new UnexpectedServerError("validation service is not avaible");
                     }
 
                     const result = validator.validate(param.Name || '', param.Schema, args[param.Index]);
                     if (result) {
-                        throw new ValidationException(`parameter validation error`, result);
+                        throw new ValidationFailed(`parameter validation error`, result);
                     }
                 }
             }
